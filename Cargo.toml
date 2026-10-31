@@ -1,0 +1,24 @@
+[package]
+name = "eh3d-tool-manager"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75"
+description = "The tool crib of the EH3D Fabrication Suite: tools, wear counters, feeds and speeds, JSON and CSV"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/JuanenRac/EH3D-TOOL-MANAGER"
+readme = "README.md"
+
+[lib]
+name = "eh3d_tool_manager"
+path = "src/lib.rs"
+
+[[bin]]
+name = "eh3d-tools"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true

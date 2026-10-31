@@ -1,0 +1,133 @@
+{
+  "repo": "EH3D-TOOL-MANAGER",
+  "ecosystem": "eh3d",
+  "tagline": "Tools, their wear and where to start the feeds and speeds.",
+  "description": "EH3D-TOOL-MANAGER is a Rust library and command line for the tool crib of the suite: tools with their geometry and wear, JSON and CSV storage and starting feeds and speeds by material. The CAM programs do not read it yet.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT DEPENDS ON"
+  ],
+  "nodes": [
+    {
+      "id": "person",
+      "column": 0,
+      "level": "external",
+      "title": "A person",
+      "lines": [
+        "adds tools, reports use and",
+        "asks for feeds and speeds"
+      ]
+    },
+    {
+      "id": "cam",
+      "column": 0,
+      "level": "config",
+      "title": "CAM programs",
+      "lines": [
+        "planned: DRILLPRO, ROUTEPRO",
+        "and the rest will read the",
+        "crib"
+      ]
+    },
+    {
+      "id": "model",
+      "column": 1,
+      "level": "tested",
+      "title": "model",
+      "lines": [
+        "tools, the crib and the wear",
+        "counters with their limits"
+      ],
+      "code": [
+        "src/model.rs::pub struct Crib",
+        "src/model.rs::pub fn wear"
+      ]
+    },
+    {
+      "id": "store",
+      "column": 1,
+      "level": "tested",
+      "title": "store and csv",
+      "lines": [
+        "JSON document and CSV table,",
+        "read with care"
+      ],
+      "code": [
+        "src/store.rs::pub fn from_json",
+        "src/csv.rs::pub fn from_csv"
+      ]
+    },
+    {
+      "id": "calc",
+      "column": 1,
+      "level": "tested",
+      "title": "calc",
+      "lines": [
+        "starting feeds and speeds by",
+        "material, limited by the",
+        "spindle"
+      ],
+      "code": [
+        "src/calc.rs::pub fn feeds_speeds"
+      ]
+    },
+    {
+      "id": "file",
+      "column": 2,
+      "level": "external",
+      "title": "The crib file",
+      "lines": [
+        "a JSON file or a CSV table",
+        "on the disk"
+      ]
+    },
+    {
+      "id": "std",
+      "column": 2,
+      "level": "external",
+      "title": "serde_json",
+      "lines": [
+        "the only dependency"
+      ],
+      "code": [
+        "Cargo.toml::[dependencies]"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "person",
+      "to": "model",
+      "label": "add, use",
+      "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "calc",
+      "level": "tested"
+    },
+    {
+      "from": "cam",
+      "to": "store",
+      "label": "planned",
+      "level": "config"
+    },
+    {
+      "from": "store",
+      "to": "file",
+      "level": "tested"
+    },
+    {
+      "from": "store",
+      "to": "std",
+      "level": "tested"
+    }
+  ],
+  "legend": {
+    "tested": "covered by tests on a computer (12 tests)",
+    "config": "planned, not used today",
+    "external": "a person, a file or another repository"
+  },
+  "footer": "The numbers are starting points; try them on a scrap board."
+}

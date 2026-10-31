@@ -1,0 +1,201 @@
+// EH3D-TOOL-MANAGER - command line.
+// Copyright (C) 2026 JuanenRac (Electro Hobby 3D). GPL-3.0-or-later.
+#![forbid(unsafe_code)]
+
+use eh3d_tool_manager::calc::{feeds_speeds, Material};
+use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear};
+use eh3d_tool_manager::{csv, store};
+use std::env;
+use std::path::Path;
+use std::process::ExitCode;
+
+const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
+
+  eh3d-tools init FILE.json
+  eh3d-tools add FILE.json NAME KIND DIAMETER_MM [--flutes N] [--angle DEG] [--max-hours H] [--max-holes N]
+  eh3d-tools list FILE.json
+  eh3d-tools use FILE.json ID [--hours H] [--meters M] [--holes N]
+  eh3d-tools wear FILE.json                 the tools that are worn or about to be
+  eh3d-tools export-csv FILE.json
+  eh3d-tools import-csv FILE.json TABLE.csv
+  eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG]
+
+KIND: drill, end-mill, v-bit, engraver, laser, nozzle. MATERIAL: fr4, aluminium, acrylic, wood, brass.
+The feeds and speeds are starting points to try on a scrap board, not a promise.";
+
+fn flag(args: &mut Vec<String>, name: &str) -> Result<Option<f64>, String> {
+    if let Some(i) = args.iter().position(|a| a == name) {
+        let value = args
+            .get(i + 1)
+            .ok_or_else(|| format!("{name} needs a value"))?
+            .clone();
+        args.drain(i..=i + 1);
+        return value
+            .parse::<f64>()
+            .ok()
+            .filter(|v| v.is_finite())
+            .map(Some)
+            .ok_or_else(|| format!("{name} '{value}' is not a number"));
+    }
+    Ok(None)
+}
+
+fn describe(w: Wear) -> String {
+    match w {
+        Wear::Good(f) => format!("good ({:.0} %)", f * 100.0),
+        Wear::Soon(f) => format!("replace soon ({:.0} %)", f * 100.0),
+        Wear::Replace => "REPLACE".to_string(),
+    }
+}
+
+fn run(mut args: Vec<String>) -> Result<(), String> {
+    if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
+        println!("{HELP}");
+        return Ok(());
+    }
+    let cmd = args.remove(0);
+    let need = |args: &Vec<String>, n: usize, what: &str| -> Result<(), String> {
+        if args.len() < n {
+            Err(format!("{cmd} needs {what}"))
+        } else {
+            Ok(())
+        }
+    };
+    match cmd.as_str() {
+        "init" => {
+            need(&args, 1, "a file")?;
+            if Path::new(&args[0]).exists() {
+                return Err(format!(
+                    "{}: already exists; nothing was overwritten",
+                    args[0]
+                ));
+            }
+            store::save(&Crib::default(), Path::new(&args[0]))
+        }
+        "add" => {
+            let flutes = flag(&mut args, "--flutes")?;
+            let angle = flag(&mut args, "--angle")?;
+            let max_hours = flag(&mut args, "--max-hours")?;
+            let max_holes = flag(&mut args, "--max-holes")?;
+            need(&args, 4, "a file, a name, a kind and a diameter")?;
+            let file = Path::new(&args[0]);
+            let mut crib = store::load(file)?;
+            let diameter = args[3]
+                .parse::<f64>()
+                .map_err(|_| format!("the diameter '{}' is not a number", args[3]))?;
+            let mut t = Tool::new(&args[1], Kind::parse(&args[2])?, diameter);
+            if let Some(f) = flutes {
+                t.flutes = f as u32;
+            }
+            t.tip_angle_deg = angle;
+            t.max_hours = max_hours.unwrap_or(0.0);
+            t.max_holes = max_holes.unwrap_or(0.0) as u64;
+            let id = crib.add(t)?;
+            store::save(&crib, file)?;
+            println!("tool {id} added");
+            Ok(())
+        }
+        "list" => {
+            need(&args, 1, "a file")?;
+            for t in &store::load(Path::new(&args[0]))?.tools {
+                println!(
+                    "{:>3}  {:<24} {:<9} {:>6.3} mm  {:>2} flutes  {:>7.1} h  {:>7} holes  {}",
+                    t.id,
+                    t.name,
+                    t.kind.key(),
+                    t.diameter_mm,
+                    t.flutes,
+                    t.hours,
+                    t.holes,
+                    describe(t.wear())
+                );
+            }
+            Ok(())
+        }
+        "use" => {
+            let hours = flag(&mut args, "--hours")?.unwrap_or(0.0);
+            let meters = flag(&mut args, "--meters")?.unwrap_or(0.0);
+            let holes = flag(&mut args, "--holes")?.unwrap_or(0.0);
+            need(&args, 2, "a file and a tool number")?;
+            if !(0.0..=1.0e12).contains(&holes) {
+                return Err(format!("--holes {holes} is not a count of holes"));
+            }
+            let file = Path::new(&args[0]);
+            let mut crib = store::load(file)?;
+            let id = args[1]
+                .parse::<u32>()
+                .map_err(|_| format!("'{}' is not a tool number", args[1]))?;
+            let w = crib.record_use(id, hours, meters, holes as u64)?;
+            store::save(&crib, file)?;
+            println!("tool {id}: {}", describe(w));
+            Ok(())
+        }
+        "wear" => {
+            need(&args, 1, "a file")?;
+            let crib = store::load(Path::new(&args[0]))?;
+            let list = crib.to_replace();
+            if list.is_empty() {
+                println!("no tool is worn");
+            }
+            for (t, w) in list {
+                println!("{:>3}  {:<24} {}", t.id, t.name, describe(w));
+            }
+            Ok(())
+        }
+        "export-csv" => {
+            need(&args, 1, "a file")?;
+            print!("{}", csv::to_csv(&store::load(Path::new(&args[0]))?));
+            Ok(())
+        }
+        "import-csv" => {
+            need(&args, 2, "a crib file and a CSV table")?;
+            let text =
+                std::fs::read_to_string(&args[1]).map_err(|e| format!("{}: {e}", args[1]))?;
+            let crib = csv::from_csv(&text)?;
+            store::save(&crib, Path::new(&args[0]))?;
+            println!("{} tools written to {}", crib.tools.len(), args[0]);
+            Ok(())
+        }
+        "calc" => {
+            let flutes = flag(&mut args, "--flutes")?;
+            let angle = flag(&mut args, "--angle")?;
+            need(&args, 4, "a kind, a diameter, a material and a maximum rpm")?;
+            let diameter = args[1]
+                .parse::<f64>()
+                .map_err(|_| format!("the diameter '{}' is not a number", args[1]))?;
+            let mut t = Tool::new("calc", Kind::parse(&args[0])?, diameter);
+            if let Some(f) = flutes {
+                t.flutes = f as u32;
+            }
+            t.tip_angle_deg = angle;
+            let max_rpm = args[3]
+                .parse::<f64>()
+                .map_err(|_| format!("the maximum rpm '{}' is not a number", args[3]))?;
+            let c = feeds_speeds(&t, Material::parse(&args[2])?, max_rpm)?;
+            println!(
+                "{} rpm, feed {} mm/min, plunge {} mm/min, pass {} mm{}",
+                c.rpm,
+                c.feed_mm_min,
+                c.plunge_mm_min,
+                c.pass_depth_mm,
+                if c.rpm_limited {
+                    " (the spindle limits the speed)"
+                } else {
+                    ""
+                }
+            );
+            Ok(())
+        }
+        other => Err(format!("{other}: unknown command (see help)")),
+    }
+}
+
+fn main() -> ExitCode {
+    match run(env::args().skip(1).collect()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::from(1)
+        }
+    }
+}

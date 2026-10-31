@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "EH3D",
+  "name": "EH3D-TOOL-MANAGER",
+  "version": "0.0.1",
+  "role": "tool",
+  "stack": "rust",
+  "technologies": [
+    "Rust",
+    "serde_json",
+    "CSV"
+  ],
+  "deployment_target": "user-pc",
+  "maturity": "scaffolding",
+  "evidence": "host-test",
+  "hardware_bound": false,
+  "family": "CNC Workflow Tools",
+  "parent": null,
+  "build": "cargo build --release; cargo test",
+  "notes": "Scaffolding v0.0.1: a library and a command line for the tool crib: drills, end mills, V-bits, engravers, lasers and nozzles with their geometry, wear counters (hours, metres, holes) with limits and warnings, JSON and CSV storage, and starting feeds and speeds by material limited by the spindle. No window, no database (the crib is a JSON file) and the numbers are starting points that have not been tried on a machine.",
+  "native_version": {
+    "file": "Cargo.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""
+  }
+}
