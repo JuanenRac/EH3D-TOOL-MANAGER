@@ -274,3 +274,14 @@ fn a_vbit_is_worked_out_at_its_tip_not_at_its_shank() {
         "a 0.5 mm point asks for more than the spindle gives"
     );
 }
+
+#[test]
+fn the_feed_and_the_pass_of_a_vbit_do_not_depend_on_its_shank() {
+    let mut tip = vbit();
+    tip.diameter_mm = 0.5;
+    let shank = feeds_speeds(&vbit(), Material::Fr4, 24_000.0).unwrap();
+    let narrow = feeds_speeds(&tip, Material::Fr4, 24_000.0).unwrap();
+    assert_eq!(shank.feed_mm_min, narrow.feed_mm_min);
+    assert_eq!(shank.pass_depth_mm, narrow.pass_depth_mm);
+    assert!(shank.pass_depth_mm <= 0.25);
+}

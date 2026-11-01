@@ -81,7 +81,8 @@ pub fn feeds_speeds(tool: &Tool, material: Material, max_rpm: f64) -> Result<Cut
     };
     let wanted = material.surface_speed() * 1000.0 / (std::f64::consts::PI * working);
     let rpm = wanted.min(max_rpm);
-    let feed = rpm * f64::from(tool.flutes) * material.chip_fraction() * tool.diameter_mm.max(0.1);
+    // the chip load and the depth of a pass follow the diameter the tool works with, not the shank of a V-bit or an engraver
+    let feed = rpm * f64::from(tool.flutes) * material.chip_fraction() * working.max(0.1);
     let plunge = if tool.kind == Kind::Drill {
         rpm * 0.01 * tool.diameter_mm
     } else {
@@ -90,7 +91,7 @@ pub fn feeds_speeds(tool: &Tool, material: Material, max_rpm: f64) -> Result<Cut
     let pass = if tool.kind == Kind::Drill {
         0.0
     } else {
-        (tool.diameter_mm * 0.5).min(1.0)
+        (working * 0.5).min(1.0)
     };
     Ok(Cut {
         rpm: rpm.round(),
