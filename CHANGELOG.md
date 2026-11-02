@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 - **V-bits and engravers:** the feed and the depth of a pass are worked out from the diameter the tool works with (the point), like the speed, not from the shank, so a V-bit entered with its shank diameter no longer gets a feed sixteen times too high.
+- **The banner of the README** shows the role and the technologies of this program (it showed the text of the shared library).
 
 ## [0.0.1] - The tool crib with wear counters, JSON and CSV, and starting feeds and speeds
 
