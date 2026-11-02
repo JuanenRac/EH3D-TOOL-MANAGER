@@ -717,7 +717,6 @@ fn the_calc_command_says_when_the_spindle_limits_the_speed() {
 }
 
 #[test]
-#[ignore = "bug: a wear counter that is not a whole number (holes, max_holes, flutes) is read as its default instead of being refused"]
 fn a_wear_counter_that_is_not_a_whole_number_is_refused() {
     for body in [
         r#""holes":-5"#,
@@ -729,4 +728,54 @@ fn a_wear_counter_that_is_not_a_whole_number_is_refused() {
             format!(r#"{{"tools":[{{"id":1,"name":"a","kind":"drill","diameter_mm":1,{body}}}]}}"#);
         assert!(from_json(&doc).is_err(), "{doc} was accepted");
     }
+}
+
+#[test]
+fn a_refused_counter_names_the_field_that_fails() {
+    for (body, field) in [
+        (r#""holes":-5"#, "holes"),
+        (r#""holes":"many""#, "holes"),
+        (r#""max_holes":-1"#, "max_holes"),
+        (r#""flutes":2.5"#, "flutes"),
+        (r#""flutes":"two""#, "flutes"),
+    ] {
+        let doc =
+            format!(r#"{{"tools":[{{"id":1,"name":"a","kind":"drill","diameter_mm":1,{body}}}]}}"#);
+        let err = from_json(&doc).unwrap_err();
+        assert!(err.contains(field) && err.contains("tool 1"), "{err}");
+    }
+    let ok =
+        r#"{"tools":[{"id":1,"name":"a","kind":"drill","diameter_mm":1,"holes":null,"flutes":3}]}"#;
+    assert_eq!(from_json(ok).unwrap().tools[0].flutes, 3);
+}
+
+#[test]
+fn the_command_line_refuses_counters_that_are_not_whole_numbers() {
+    let dir = scratch("whole_flags");
+    let file = dir.join("c.json");
+    let f = file.to_str().unwrap();
+    cli(&["init", f]);
+    for args in [
+        vec!["add", f, "a", "drill", "1", "--flutes", "2.9"],
+        vec!["add", f, "a", "drill", "1", "--max-holes", "-5"],
+        vec!["calc", "drill", "1", "fr4", "60000", "--flutes", "2.9"],
+    ] {
+        let out = cli(&args);
+        assert_eq!(out.status.code(), Some(1), "{args:?}");
+        assert!(text(&out.stderr).contains("whole number"), "{args:?}");
+    }
+    assert!(cli(&[
+        "add",
+        f,
+        "a",
+        "drill",
+        "1",
+        "--flutes",
+        "3",
+        "--max-holes",
+        "5"
+    ])
+    .status
+    .success());
+    let _ = std::fs::remove_dir_all(&dir);
 }

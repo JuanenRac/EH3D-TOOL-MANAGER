@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 34 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 37 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Non ha ancora una finestra, non è stato provato su una macchina e non è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.2` |
 | Maturità | Impalcatura |
-| Test | 34 |
+| Test | 37 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-tools` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 34 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 37 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🔴 | Previsto: la finestra egui comune alla suite; oggi esiste solo la riga di comando. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -55,7 +55,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 
 ## 🎯 Panoramica
 
-* **Il magazzino** (`src/model.rs`): punte, frese, frese a V, incisori, laser e ugelli con diametro, taglienti, lunghezza, angolo di punta e gambo; ogni valore è controllato e un nome ripetuto è rifiutato; ogni utensile riceve il suo numero.
+* **Il magazzino** (`src/model.rs`): punte, frese, frese a V, incisori, laser e ugelli con diametro, taglienti, lunghezza, angolo di punta e gambo; ogni valore è controllato e un nome ripetuto è rifiutato; ogni utensile riceve il suo numero. Un contatore di usura o un numero di taglienti che non sia intero viene rifiutato con il nome del campo, nei file e sulla riga di comando.
 * **L'usura** (`src/model.rs`): ore, metri e fori si sommano dopo ogni lavoro; con un limite di ore o fori, un utensile è buono, da sostituire presto (dal 90 %) o da sostituire, e `wear` elenca i peggiori per primi.
 * **Archiviazione e avanzamenti e velocità** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): il magazzino come documento JSON o tabella CSV per un foglio di calcolo, letto con cura e con la riga indicata in ogni errore; velocità di taglio e avanzamento per dente per FR4, alluminio, acrilico, legno e ottone, limitati dal mandrino.
 
@@ -133,7 +133,7 @@ cargo run --release -- calc drill 0.8 fr4 24000
 
 ## 🧪 Test
 
-La suite ha 34 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 37 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

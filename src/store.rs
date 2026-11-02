@@ -33,6 +33,17 @@ fn number(v: &Value, key: &str, default: f64) -> Result<f64, String> {
     }
 }
 
+/// Reads a whole, non-negative counter; a missing or null field is the default,
+/// anything else that is not a whole number is refused naming the field.
+fn whole(item: &Value, key: &str, default: u64) -> Result<u64, String> {
+    match item.get(key) {
+        None | Some(Value::Null) => Ok(default),
+        Some(v) => v
+            .as_u64()
+            .ok_or_else(|| format!("{key} must be a whole number of 0 or more, not {v}")),
+    }
+}
+
 pub fn from_json(text: &str) -> Result<Crib, String> {
     let v: Value = serde_json::from_str(text).map_err(|e| format!("the crib is not JSON: {e}"))?;
     let schema = v
@@ -69,8 +80,8 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
             .and_then(|n| n.as_u64())
             .and_then(|n| u32::try_from(n).ok())
             .unwrap_or(0);
-        t.flutes =
-            u32::try_from(item.get("flutes").and_then(|n| n.as_u64()).unwrap_or(2)).unwrap_or(0);
+        t.flutes = u32::try_from(whole(item, "flutes", 2).map_err(fail)?)
+            .map_err(|_| fail("flutes is too large".into()))?;
         t.length_mm = number(item, "length_mm", 0.0).map_err(fail)?;
         t.tip_angle_deg = match item.get("tip_angle_deg") {
             None | Some(Value::Null) => None,
@@ -84,9 +95,9 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
             .to_string();
         t.hours = number(item, "hours", 0.0).map_err(fail)?;
         t.meters = number(item, "meters", 0.0).map_err(fail)?;
-        t.holes = item.get("holes").and_then(|n| n.as_u64()).unwrap_or(0);
+        t.holes = whole(item, "holes", 0).map_err(fail)?;
         t.max_hours = number(item, "max_hours", 0.0).map_err(fail)?;
-        t.max_holes = item.get("max_holes").and_then(|n| n.as_u64()).unwrap_or(0);
+        t.max_holes = whole(item, "max_holes", 0).map_err(fail)?;
         t.validate().map_err(fail)?;
         if t.id == 0 || crib.tools.iter().any(|o| o.id == t.id) {
             return Err(fail(format!(

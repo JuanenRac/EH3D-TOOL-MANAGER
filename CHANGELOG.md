@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Wear counters that are not whole numbers are refused:** reading a crib with a negative or textual `holes` or `max_holes`, or a `flutes` that is not a whole number, is an error that names the tool and the field instead of reading the default; the command line also refuses `--flutes 2.9` and `--max-holes -5` instead of cutting them.
 
 ## [0.0.2] - More tests and counters that cannot overflow
 

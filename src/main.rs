@@ -40,6 +40,22 @@ fn flag(args: &mut Vec<String>, name: &str) -> Result<Option<f64>, String> {
     Ok(None)
 }
 
+/// A flag that takes a whole number of 0 or more (`--flutes 2.9` or `--max-holes -5` are errors).
+fn whole_flag(args: &mut Vec<String>, name: &str) -> Result<Option<u64>, String> {
+    if let Some(i) = args.iter().position(|a| a == name) {
+        let value = args
+            .get(i + 1)
+            .ok_or_else(|| format!("{name} needs a value"))?
+            .clone();
+        args.drain(i..=i + 1);
+        return value
+            .parse::<u64>()
+            .map(Some)
+            .map_err(|_| format!("{name} '{value}' is not a whole number of 0 or more"));
+    }
+    Ok(None)
+}
+
 fn describe(w: Wear) -> String {
     match w {
         Wear::Good(f) => format!("good ({:.0} %)", f * 100.0),
@@ -73,10 +89,10 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             store::save(&Crib::default(), Path::new(&args[0]))
         }
         "add" => {
-            let flutes = flag(&mut args, "--flutes")?;
+            let flutes = whole_flag(&mut args, "--flutes")?;
             let angle = flag(&mut args, "--angle")?;
             let max_hours = flag(&mut args, "--max-hours")?;
-            let max_holes = flag(&mut args, "--max-holes")?;
+            let max_holes = whole_flag(&mut args, "--max-holes")?;
             need(&args, 4, "a file, a name, a kind and a diameter")?;
             let file = Path::new(&args[0]);
             let mut crib = store::load(file)?;
@@ -85,11 +101,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 .map_err(|_| format!("the diameter '{}' is not a number", args[3]))?;
             let mut t = Tool::new(&args[1], Kind::parse(&args[2])?, diameter);
             if let Some(f) = flutes {
-                t.flutes = f as u32;
+                t.flutes = u32::try_from(f).map_err(|_| format!("--flutes {f} is too large"))?;
             }
             t.tip_angle_deg = angle;
             t.max_hours = max_hours.unwrap_or(0.0);
-            t.max_holes = max_holes.unwrap_or(0.0) as u64;
+            t.max_holes = max_holes.unwrap_or(0);
             let id = crib.add(t)?;
             store::save(&crib, file)?;
             println!("tool {id} added");
@@ -157,7 +173,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             Ok(())
         }
         "calc" => {
-            let flutes = flag(&mut args, "--flutes")?;
+            let flutes = whole_flag(&mut args, "--flutes")?;
             let angle = flag(&mut args, "--angle")?;
             need(&args, 4, "a kind, a diameter, a material and a maximum rpm")?;
             let diameter = args[1]
@@ -165,7 +181,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 .map_err(|_| format!("the diameter '{}' is not a number", args[1]))?;
             let mut t = Tool::new("calc", Kind::parse(&args[0])?, diameter);
             if let Some(f) = flutes {
-                t.flutes = f as u32;
+                t.flutes = u32::try_from(f).map_err(|_| format!("--flutes {f} is too large"))?;
             }
             t.tip_angle_deg = angle;
             let max_rpm = args[3]

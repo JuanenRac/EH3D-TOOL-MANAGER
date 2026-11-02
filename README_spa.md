@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-tools`) con 34 pruebas que se ejecutan en un ordenador: guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-tools`) con 37 pruebas que se ejecutan en un ordenador: guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material. Todavía no tiene ventana, no se ha probado en una máquina y no se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versión | `0.0.2` |
 | Madurez | Andamiaje |
-| Pruebas | 34 |
+| Pruebas | 37 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -47,7 +47,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 |---|---|---|
 | Núcleo | 🟡 | guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material; probado en un ordenador con entradas normales y dañadas, no con una colección de ficheros reales. |
 | Línea de comandos | 🟡 | `eh3d-tools` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 34 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
+| Pruebas | 🟡 | 37 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🔴 | Previsto: la ventana egui común a la suite; hoy solo existe la línea de comandos. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -55,7 +55,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 
 ## 🎯 Resumen
 
-* **El almacén** (`src/model.rs`): brocas, fresas, fresas en V, grabadoras, láseres y boquillas con diámetro, labios, longitud, ángulo de punta y mango; cada valor se comprueba y un nombre repetido se rechaza; cada herramienta recibe su número.
+* **El almacén** (`src/model.rs`): brocas, fresas, fresas en V, grabadoras, láseres y boquillas con diámetro, labios, longitud, ángulo de punta y mango; cada valor se comprueba y un nombre repetido se rechaza; cada herramienta recibe su número. Un contador de desgaste o un número de filos que no sea entero se rechaza con el nombre del campo, en los archivos y en la línea de órdenes.
 * **El desgaste** (`src/model.rs`): horas, metros y agujeros se suman tras cada trabajo; con un límite de horas o agujeros, una herramienta está bien, para cambiar pronto (desde el 90 %) o para cambiar, y `wear` lista las peores primero.
 * **Almacenamiento y avances y velocidades** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): el almacén como documento JSON o tabla CSV para una hoja de cálculo, leído con cuidado y con la fila indicada en cada error; velocidad de corte y avance por diente para FR4, aluminio, acrílico, madera y latón, limitados por el husillo.
 
@@ -133,7 +133,7 @@ cargo run --release -- calc drill 0.8 fr4 24000
 
 ## 🧪 Pruebas
 
-El conjunto tiene 34 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 37 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 

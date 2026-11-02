@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 34 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 37 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.2` |
 | Maturity | Scaffolding |
-| Tests | 34 |
+| Tests | 37 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 34 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 37 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -55,7 +55,7 @@ Each line is one part of this repository and the light says how far it is today.
 
 ## 🎯 Overview
 
-* **The crib** (`src/model.rs`): drills, end mills, V-bits, engravers, lasers and nozzles with diameter, flutes, length, tip angle and shank; every value is checked and a repeated name is refused; each tool gets its own number.
+* **The crib** (`src/model.rs`): drills, end mills, V-bits, engravers, lasers and nozzles with diameter, flutes, length, tip angle and shank; every value is checked and a repeated name is refused; each tool gets its own number. A wear counter or a number of flutes that is not a whole number is refused with the name of the field, in the files and on the command line.
 * **The wear** (`src/model.rs`): hours, metres and holes are added after each job; with a limit of hours or holes set, a tool is good, to replace soon (from 90 %) or to replace, and `wear` lists the worst first.
 * **Storage and feeds and speeds** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): the crib as a JSON document or a CSV table for a spreadsheet, read with care and with the row named in every error; surface speed and chip load for FR4, aluminium, acrylic, wood and brass, limited by the spindle.
 
@@ -133,7 +133,7 @@ cargo run --release -- calc drill 0.8 fr4 24000
 
 ## 🧪 Testing
 
-The suite has 34 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 37 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

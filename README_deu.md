@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 34 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Es hat noch kein Fenster, wurde an keiner Maschine ausprobiert und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 37 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Es hat noch kein Fenster, wurde an keiner Maschine ausprobiert und nicht an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.2` |
 | Reifegrad | Gerüst |
-| Tests | 34 |
+| Tests | 37 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,7 +47,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-tools` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 34 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 37 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🔴 | Geplant: das egui-Fenster, das die Suite gemeinsam nutzt; heute gibt es nur die Kommandozeile. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -55,7 +55,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 
 ## 🎯 Überblick
 
-* **Das Lager** (`src/model.rs`): Bohrer, Fräser, V-Fräser, Gravierstichel, Laser und Düsen mit Durchmesser, Schneiden, Länge, Spitzenwinkel und Schaft; jeder Wert wird geprüft, ein doppelter Name abgelehnt; jedes Werkzeug bekommt seine Nummer.
+* **Das Lager** (`src/model.rs`): Bohrer, Fräser, V-Fräser, Gravierstichel, Laser und Düsen mit Durchmesser, Schneiden, Länge, Spitzenwinkel und Schaft; jeder Wert wird geprüft, ein doppelter Name abgelehnt; jedes Werkzeug bekommt seine Nummer. Ein Verschleißzähler oder eine Schneidenzahl, die keine ganze Zahl ist, wird mit dem Namen des Feldes abgelehnt, in den Dateien und in der Befehlszeile.
 * **Der Verschleiß** (`src/model.rs`): Stunden, Meter und Bohrungen werden nach jedem Auftrag addiert; mit einem Limit für Stunden oder Bohrungen ist ein Werkzeug gut, bald zu wechseln (ab 90 %) oder zu wechseln, und `wear` listet die schlechtesten zuerst.
 * **Speicherung und Vorschübe und Drehzahlen** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): das Lager als JSON-Dokument oder CSV-Tabelle für eine Tabellenkalkulation, sorgfältig gelesen und mit der Zeile in jedem Fehler; Schnittgeschwindigkeit und Zahnvorschub für FR4, Aluminium, Acryl, Holz und Messing, begrenzt durch die Spindel.
 
@@ -133,7 +133,7 @@ cargo run --release -- calc drill 0.8 fr4 24000
 
 ## 🧪 Tests
 
-Die Suite hat 34 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 37 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
