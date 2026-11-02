@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 - **V-bits and engravers:** the feed and the depth of a pass are worked out from the diameter the tool works with (the point), like the speed, not from the shank, so a V-bit entered with its shank diameter no longer gets a feed sixteen times too high.
 - **The banner of the README** shows the role and the technologies of this program (it showed the text of the shared library).
+- **More tests:** the crib is checked at the exact limits of wear (90 % and 100 %), with names that are not ASCII, with values that overflow, with damaged CSV and JSON fields and through every command of the command line; a counter that would grow past what a number can hold is now refused instead of being saved as an unreadable value.
 
 ## [0.0.1] - The tool crib with wear counters, JSON and CSV, and starting feeds and speeds
 

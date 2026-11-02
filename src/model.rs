@@ -209,6 +209,11 @@ impl Crib {
             .iter_mut()
             .find(|t| t.id == id)
             .ok_or_else(|| format!("there is no tool {id}"))?;
+        if !(tool.hours + hours).is_finite() || !(tool.meters + meters).is_finite() {
+            return Err(format!(
+                "tool {id}: the counters would grow past what a number can hold"
+            ));
+        }
         tool.hours += hours;
         tool.meters += meters;
         tool.holes = tool.holes.saturating_add(holes);
