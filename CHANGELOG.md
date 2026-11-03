@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Brand:** Add the application icon and the logos of the program.
 - **Shared checks updated:** the validator also compares the badge and the Version row of the README with the manifest, fails when one of its checks cannot run, and the CHANGELOG step of the workflow reads the base branch from the environment.
 - **BOM in the crib:** a crib file saved with a byte order mark is read.
 - **Safer crib file:** the file is written through a temporary file and renamed, `import-csv` keeps the previous table as `.bak`, and the last tool number gives an error instead of wrapping round to 0.
