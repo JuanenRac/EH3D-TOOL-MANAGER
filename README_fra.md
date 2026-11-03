@@ -193,8 +193,8 @@ Le README et les textes existent en anglais, espagnol, français, italien, allem
 * [EH3D-DRILLPRO](https://github.com/JuanenRac/EH3D-DRILLPRO): le programme de perçage
 * [EH3D-ROUTEPRO](https://github.com/JuanenRac/EH3D-ROUTEPRO): le programme de fraisage de contour
 * [EH3D-ISOCAM](https://github.com/JuanenRac/EH3D-ISOCAM): le fraisage d'isolation du cuivre
-* [EH3D-LASER-CAM](https://github.com/JuanenRac/EH3D-LASER-CAM): la gravure et la découpe laser
-* [EH3D-PNP-MANAGER](https://github.com/JuanenRac/EH3D-PNP-MANAGER): l'assemblage pick and place
+* [EH3D-PHOENIX-LASER](https://github.com/JuanenRac/EH3D-PHOENIX-LASER): la gravure et la découpe laser
+* [EH3D-PHOENIX-PNP](https://github.com/JuanenRac/EH3D-PHOENIX-PNP): l'assemblage pick and place
 * [EH3D-SUITE-LAUNCHER](https://github.com/JuanenRac/EH3D-SUITE-LAUNCHER): le centre qui trouve et lance les programmes de la suite
 
 ## 📚 Documentation
