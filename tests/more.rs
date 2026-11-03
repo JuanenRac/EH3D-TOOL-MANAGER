@@ -12,7 +12,10 @@ fn drill(name: &str) -> Tool {
 fn every_kind_has_its_own_key_that_reads_back_in_any_case_and_with_blanks() {
     for k in KINDS {
         assert_eq!(Kind::parse(k.key()), Ok(k));
-        assert_eq!(Kind::parse(&format!("  {}  ", k.key().to_ascii_uppercase())), Ok(k));
+        assert_eq!(
+            Kind::parse(&format!("  {}  ", k.key().to_ascii_uppercase())),
+            Ok(k)
+        );
     }
     let mut keys: Vec<&str> = KINDS.iter().map(|k| k.key()).collect();
     keys.sort_unstable();
@@ -117,12 +120,23 @@ fn recording_a_use_adds_to_the_counters_and_says_the_wear_and_refuses_what_makes
     let mut t = drill("a");
     t.max_holes = 100;
     let id = c.add(t).unwrap();
-    assert!(matches!(c.record_use(id, 0.5, 2.0, 50).unwrap(), Wear::Good(_)));
-    assert!(matches!(c.record_use(id, 0.0, 0.0, 45).unwrap(), Wear::Soon(_)));
+    assert!(matches!(
+        c.record_use(id, 0.5, 2.0, 50).unwrap(),
+        Wear::Good(_)
+    ));
+    assert!(matches!(
+        c.record_use(id, 0.0, 0.0, 45).unwrap(),
+        Wear::Soon(_)
+    ));
     assert_eq!(c.record_use(id, 0.0, 0.0, 5).unwrap(), Wear::Replace);
     let t = c.get(id).unwrap();
     assert_eq!((t.hours, t.meters, t.holes), (0.5, 2.0, 100));
-    for (h, m) in [(-1.0, 0.0), (0.0, -1.0), (f64::NAN, 0.0), (0.0, f64::INFINITY)] {
+    for (h, m) in [
+        (-1.0, 0.0),
+        (0.0, -1.0),
+        (f64::NAN, 0.0),
+        (0.0, f64::INFINITY),
+    ] {
         assert!(c.record_use(id, h, m, 0).is_err(), "{h} {m}");
     }
     assert!(c.record_use(99, 1.0, 1.0, 1).unwrap_err().contains("99"));
@@ -138,19 +152,31 @@ fn the_holes_counter_does_not_wrap_around_and_the_hours_cannot_grow_past_a_numbe
     c.record_use(id, 0.0, 0.0, 10).unwrap();
     assert_eq!(c.get(id).unwrap().holes, u64::MAX);
     c.record_use(id, f64::MAX, 0.0, 0).unwrap();
-    assert!(c.record_use(id, f64::MAX, 0.0, 0).unwrap_err().contains("past"));
+    assert!(c
+        .record_use(id, f64::MAX, 0.0, 0)
+        .unwrap_err()
+        .contains("past"));
 }
 
 #[test]
 fn the_tools_to_replace_come_worst_first_and_the_good_ones_are_left_out() {
     let mut c = Crib::default();
-    for (name, hours) in [("good", 1.0), ("soon", 9.2), ("worn", 12.0), ("sooner", 9.8)] {
+    for (name, hours) in [
+        ("good", 1.0),
+        ("soon", 9.2),
+        ("worn", 12.0),
+        ("sooner", 9.8),
+    ] {
         let mut t = drill(name);
         t.max_hours = 10.0;
         t.hours = hours;
         c.add(t).unwrap();
     }
-    let names: Vec<&str> = c.to_replace().iter().map(|(t, _)| t.name.as_str()).collect();
+    let names: Vec<&str> = c
+        .to_replace()
+        .iter()
+        .map(|(t, _)| t.name.as_str())
+        .collect();
     assert_eq!(names, ["worn", "sooner", "soon"]);
     assert!(Crib::default().to_replace().is_empty());
 }
@@ -188,14 +214,19 @@ fn a_json_that_is_damaged_names_what_is_wrong() {
     assert!(from_json("{").unwrap_err().contains("not JSON"));
     assert!(from_json("[]").unwrap_err().contains("no list"));
     assert!(from_json("{\"tools\": 3}").unwrap_err().contains("no list"));
-    let newer = format!("{{\"schema_version\": {}, \"tools\": []}}", SCHEMA_VERSION + 1);
+    let newer = format!(
+        "{{\"schema_version\": {}, \"tools\": []}}",
+        SCHEMA_VERSION + 1
+    );
     assert!(from_json(&newer).unwrap_err().contains("format"));
     assert_eq!(from_json("{\"tools\": []}").unwrap(), Crib::default());
     let no_name = "{\"tools\": [{\"id\": 1, \"kind\": \"drill\", \"diameter_mm\": 1}]}";
     assert!(from_json(no_name).unwrap_err().contains("no name"));
-    let bad_kind = "{\"tools\": [{\"id\": 1, \"name\": \"a\", \"kind\": \"saw\", \"diameter_mm\": 1}]}";
+    let bad_kind =
+        "{\"tools\": [{\"id\": 1, \"name\": \"a\", \"kind\": \"saw\", \"diameter_mm\": 1}]}";
     assert!(from_json(bad_kind).unwrap_err().contains("tool 1"));
-    let text_number = "{\"tools\": [{\"id\": 1, \"name\": \"a\", \"kind\": \"drill\", \"diameter_mm\": \"1\"}]}";
+    let text_number =
+        "{\"tools\": [{\"id\": 1, \"name\": \"a\", \"kind\": \"drill\", \"diameter_mm\": \"1\"}]}";
     assert!(from_json(text_number).unwrap_err().contains("diameter_mm"));
     let negative_holes = "{\"tools\": [{\"id\": 1, \"name\": \"a\", \"kind\": \"drill\", \"diameter_mm\": 1, \"holes\": -3}]}";
     assert!(from_json(negative_holes).unwrap_err().contains("holes"));
@@ -205,12 +236,26 @@ fn a_json_that_is_damaged_names_what_is_wrong() {
 
 #[test]
 fn the_numbers_of_the_tools_must_be_there_and_not_repeated_and_neither_may_the_names() {
-    let item = |id: u32, name: &str| format!("{{\"id\": {id}, \"name\": \"{name}\", \"kind\": \"drill\", \"diameter_mm\": 1}}");
+    let item = |id: u32, name: &str| {
+        format!("{{\"id\": {id}, \"name\": \"{name}\", \"kind\": \"drill\", \"diameter_mm\": 1}}")
+    };
     let two = |a: String, b: String| format!("{{\"tools\": [{a}, {b}]}}");
-    assert!(from_json(&two(item(1, "a"), item(1, "b"))).unwrap_err().contains("twice"));
-    assert!(from_json(&two(item(1, "a"), item(2, "A"))).unwrap_err().contains("twice"));
-    assert!(from_json(&two(item(0, "a"), item(2, "b"))).unwrap_err().contains("missing"));
-    assert_eq!(from_json(&two(item(5, "a"), item(2, "b"))).unwrap().tools.len(), 2);
+    assert!(from_json(&two(item(1, "a"), item(1, "b")))
+        .unwrap_err()
+        .contains("twice"));
+    assert!(from_json(&two(item(1, "a"), item(2, "A")))
+        .unwrap_err()
+        .contains("twice"));
+    assert!(from_json(&two(item(0, "a"), item(2, "b")))
+        .unwrap_err()
+        .contains("missing"));
+    assert_eq!(
+        from_json(&two(item(5, "a"), item(2, "b")))
+            .unwrap()
+            .tools
+            .len(),
+        2
+    );
 }
 
 #[test]
@@ -248,13 +293,25 @@ fn a_csv_that_is_damaged_names_its_row() {
     assert!(from_csv("").unwrap_err().contains("empty"));
     assert!(from_csv("id,name\n1,a\n").unwrap_err().contains("exactly"));
     let row = |r: &str| format!("{HEADER}\n{r}\n");
-    assert!(from_csv(&row("1,a,drill,1,2,0,,3.175,carbide,0,0,0,0")).unwrap_err().contains("row 2"));
-    assert!(from_csv(&row("1,a,drill,x,2,0,,3.175,carbide,0,0,0,0,0")).unwrap_err().contains("diameter_mm"));
+    assert!(from_csv(&row("1,a,drill,1,2,0,,3.175,carbide,0,0,0,0"))
+        .unwrap_err()
+        .contains("row 2"));
+    assert!(from_csv(&row("1,a,drill,x,2,0,,3.175,carbide,0,0,0,0,0"))
+        .unwrap_err()
+        .contains("diameter_mm"));
     assert!(from_csv(&row("1,a,saw,1,2,0,,3.175,carbide,0,0,0,0,0")).is_err());
-    assert!(from_csv(&row("x,a,drill,1,2,0,,3.175,carbide,0,0,0,0,0")).unwrap_err().contains("id"));
-    assert!(from_csv(&row("0,a,drill,1,2,0,,3.175,carbide,0,0,0,0,0")).unwrap_err().contains("missing"));
-    assert!(from_csv(&row("1,a,drill,1,2,0,,3.175,carbide,0,0,-1,0,0")).unwrap_err().contains("holes"));
-    assert!(from_csv(&format!("{HEADER}\n1,\"a,drill\n")).unwrap_err().contains("quote"));
+    assert!(from_csv(&row("x,a,drill,1,2,0,,3.175,carbide,0,0,0,0,0"))
+        .unwrap_err()
+        .contains("id"));
+    assert!(from_csv(&row("0,a,drill,1,2,0,,3.175,carbide,0,0,0,0,0"))
+        .unwrap_err()
+        .contains("missing"));
+    assert!(from_csv(&row("1,a,drill,1,2,0,,3.175,carbide,0,0,-1,0,0"))
+        .unwrap_err()
+        .contains("holes"));
+    assert!(from_csv(&format!("{HEADER}\n1,\"a,drill\n"))
+        .unwrap_err()
+        .contains("quote"));
 }
 
 #[test]
