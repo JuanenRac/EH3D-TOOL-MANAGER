@@ -45,7 +45,9 @@ fn whole(item: &Value, key: &str, default: u64) -> Result<u64, String> {
 }
 
 pub fn from_json(text: &str) -> Result<Crib, String> {
-    let v: Value = serde_json::from_str(text).map_err(|e| format!("the crib is not JSON: {e}"))?;
+    // a file saved with a byte order mark (PowerShell does) is still JSON
+    let v: Value = serde_json::from_str(text.trim_start_matches('\u{feff}'))
+        .map_err(|e| format!("the crib is not JSON: {e}"))?;
     let schema = v
         .get("schema_version")
         .and_then(|s| s.as_u64())

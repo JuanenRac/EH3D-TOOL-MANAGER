@@ -813,3 +813,9 @@ fn saving_leaves_no_temporary_file_and_an_import_keeps_the_old_crib() {
     assert!(!dir.join("crib.json.tmp").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_crib_saved_with_a_byte_order_mark_is_read() {
+    let text = "\u{feff}{\"schema_version\":1,\"tools\":[{\"id\":1,\"name\":\"x\",\"kind\":\"drill\",\"diameter_mm\":1}]}";
+    assert_eq!(from_json(text).unwrap().tools.len(), 1);
+}
