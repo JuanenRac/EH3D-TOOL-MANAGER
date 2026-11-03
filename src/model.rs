@@ -170,7 +170,15 @@ impl Crib {
         {
             return Err(format!("there is a tool called '{}' already", tool.name));
         }
-        tool.id = self.tools.iter().map(|t| t.id).max().unwrap_or(0) + 1;
+        // a number that would not fit is an error, not a number that wraps round to 0 and makes the crib unreadable
+        tool.id = self
+            .tools
+            .iter()
+            .map(|t| t.id)
+            .max()
+            .unwrap_or(0)
+            .checked_add(1)
+            .ok_or("too many tools: there is no number left for a new one")?;
         let id = tool.id;
         self.tools.push(tool);
         Ok(id)

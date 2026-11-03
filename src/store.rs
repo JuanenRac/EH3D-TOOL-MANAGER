@@ -117,8 +117,20 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
     Ok(crib)
 }
 
+/// Writes the crib to a temporary file beside the real one and renames it over the real one, so that a cut or a full disk leaves the old crib whole.
 pub fn save(crib: &Crib, file: &Path) -> Result<(), String> {
-    fs::write(file, to_json(crib)).map_err(|e| format!("{}: {e}", file.display()))
+    let mut tmp = file.as_os_str().to_owned();
+    tmp.push(".tmp");
+    let tmp = std::path::PathBuf::from(tmp);
+    let fail = |e: std::io::Error| format!("{}: {e}", file.display());
+    if let Err(e) = fs::write(&tmp, to_json(crib)) {
+        let _ = fs::remove_file(&tmp);
+        return Err(fail(e));
+    }
+    fs::rename(&tmp, file).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        fail(e)
+    })
 }
 
 pub fn load(file: &Path) -> Result<Crib, String> {

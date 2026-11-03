@@ -3,7 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **Safer crib file:** the file is written through a temporary file and renamed, `import-csv` keeps the previous table as `.bak`, and the last tool number gives an error instead of wrapping round to 0.
 - **The workflows are hardened:** every action is pinned by its commit with its version in a comment, and the checkouts keep no credentials.
+- **More tests:** the kinds, the wear thresholds, the use that is recorded, the order of the tools to replace, and the JSON and CSV files that are damaged or odd.
 
 ## [0.0.3] - CI hardening and shared validator
 

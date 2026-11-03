@@ -779,3 +779,37 @@ fn the_command_line_refuses_counters_that_are_not_whole_numbers() {
     .success());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_last_number_does_not_wrap_round_and_the_crib_stays_readable() {
+    let text = r#"{"schema_version":1,"tools":[{"id":4294967295,"name":"x","kind":"drill","diameter_mm":1}]}"#;
+    let mut crib = from_json(text).unwrap();
+    let e = crib.add(drill("y", 1.0)).unwrap_err();
+    assert!(e.contains("too many tools"), "{e}");
+    assert_eq!(crib.tools.len(), 1);
+    assert!(crib.add(drill("z", 1.0)).is_err());
+}
+
+#[test]
+fn saving_leaves_no_temporary_file_and_an_import_keeps_the_old_crib() {
+    let dir = scratch("atomic");
+    let file = dir.join("crib.json");
+    let (f, table) = (file.to_str().unwrap(), dir.join("t.csv"));
+    assert!(cli(&["init", f]).status.success());
+    assert!(cli(&["add", f, "old", "drill", "1"]).status.success());
+    assert!(!dir.join("crib.json.tmp").exists());
+    let before = std::fs::read_to_string(&file).unwrap();
+    let mut other = Crib::default();
+    other.add(drill("new", 2.0)).unwrap();
+    std::fs::write(&table, to_csv(&other)).unwrap();
+    assert!(cli(&["import-csv", f, table.to_str().unwrap()])
+        .status
+        .success());
+    assert_eq!(
+        std::fs::read_to_string(dir.join("crib.json.bak")).unwrap(),
+        before
+    );
+    assert_eq!(load(&file).unwrap().tools[0].name, "new");
+    assert!(!dir.join("crib.json.tmp").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}

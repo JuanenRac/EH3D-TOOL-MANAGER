@@ -168,7 +168,15 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let text =
                 std::fs::read_to_string(&args[1]).map_err(|e| format!("{}: {e}", args[1]))?;
             let crib = csv::from_csv(&text)?;
-            store::save(&crib, Path::new(&args[0]))?;
+            // the table that was there is kept beside the new one: an import replaces it
+            let target = Path::new(&args[0]);
+            if target.exists() {
+                let mut bak = target.as_os_str().to_owned();
+                bak.push(".bak");
+                std::fs::copy(target, &bak).map_err(|e| format!("{}.bak: {e}", args[0]))?;
+                println!("the previous crib is kept as {}.bak", args[0]);
+            }
+            store::save(&crib, target)?;
             println!("{} tools written to {}", crib.tools.len(), args[0]);
             Ok(())
         }
