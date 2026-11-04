@@ -182,15 +182,15 @@ fn the_tools_to_replace_come_worst_first_and_the_good_ones_are_left_out() {
 }
 
 #[test]
-fn a_number_that_was_removed_is_not_given_to_a_tool_that_comes_after_a_higher_one() {
+fn a_number_that_was_removed_is_never_given_again_not_even_the_highest_one() {
     let mut c = Crib::default();
     for n in ["a", "b", "c"] {
         c.add(drill(n)).unwrap();
     }
     c.remove(3).unwrap();
-    assert_eq!(c.add(drill("d")).unwrap(), 3);
+    assert_eq!(c.add(drill("d")).unwrap(), 4);
     c.remove(1).unwrap();
-    assert_eq!(c.add(drill("e")).unwrap(), 4);
+    assert_eq!(c.add(drill("e")).unwrap(), 5);
 }
 
 #[test]
