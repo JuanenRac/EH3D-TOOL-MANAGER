@@ -78,6 +78,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Tests avec entrées abîmées :** les tests fournissent aussi des fichiers vides, du bruit, des nombres énormes et des fichiers coupés, et aucun ne doit paniquer.
 * **Sans deviner :** une valeur absurde est une erreur qui dit laquelle et pourquoi, jamais un résultat qui n'en a que l'air.
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
+* **Un magasin qui tient :** le numéro d'un outil retiré n'est jamais redonné (le magasin garde `next_id`), un id qui n'est pas un nombre entier est signalé comme tel, le CSV refuse du texte après un guillemet fermant, un texte qui commence comme une formule (`=`, `+`, `-`, `@`) est écrit comme texte pour que le tableur ne l'exécute pas, la matière a une limite, `--holes` est un nombre entier, une option inconnue est une erreur, et `calc` dit que le résultat pour une fraise en V ou un graveur n'est qu'un point de départ.
 
 ## 🔒 Sécurité et protection
 

@@ -78,6 +78,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **Tests with damaged input:** the tests also feed empty files, garbage, huge numbers and cut files, and none of them may panic.
 * **No guessing:** a value that does not make sense is an error that says which value and why, never a result that only looks right.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in the library and the program.
+* **A crib that holds up:** the number of a removed tool is never given again (the crib keeps `next_id`), an id that is not a whole number is told as such, the CSV refuses text after a closing quote, a text that starts like a formula (`=`, `+`, `-`, `@`) is written as text so a spreadsheet does not run it, the material has a limit, `--holes` is a whole number, an unknown option is an error, and `calc` says that the result for a V-bit or an engraver is only a starting point.
 
 ## 🔒 Security & Safety
 

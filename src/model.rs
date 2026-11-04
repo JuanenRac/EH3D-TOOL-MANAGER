@@ -120,6 +120,12 @@ impl Tool {
         if matches!(self.kind, Kind::VBit | Kind::Engraver) && self.tip_angle_deg.is_none() {
             return Err("a V-bit or an engraver needs its tip_angle_deg".into());
         }
+        if self.material.chars().count() > MAX_NAME || self.material.chars().any(|c| c.is_control())
+        {
+            return Err(format!(
+                "the material must have at most {MAX_NAME} characters and no control character"
+            ));
+        }
         not_negative("hours", self.hours)?;
         not_negative("meters", self.meters)?;
         not_negative("max_hours", self.max_hours)
@@ -157,6 +163,8 @@ pub enum Wear {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Crib {
     pub tools: Vec<Tool>,
+    /// The number the next tool gets at least: a number that was given is never given again, not even after its tool was removed. 0 until the crib has had a tool.
+    pub next_id: u32,
 }
 
 impl Crib {
@@ -171,15 +179,13 @@ impl Crib {
             return Err(format!("there is a tool called '{}' already", tool.name));
         }
         // a number that would not fit is an error, not a number that wraps round to 0 and makes the crib unreadable
-        tool.id = self
-            .tools
-            .iter()
-            .map(|t| t.id)
-            .max()
-            .unwrap_or(0)
+        let used = self.tools.iter().map(|t| t.id).max().unwrap_or(0);
+        tool.id = used
+            .max(self.next_id.saturating_sub(1))
             .checked_add(1)
             .ok_or("too many tools: there is no number left for a new one")?;
         let id = tool.id;
+        self.next_id = id.saturating_add(1);
         self.tools.push(tool);
         Ok(id)
     }
@@ -194,7 +200,10 @@ impl Crib {
             .iter()
             .position(|t| t.id == id)
             .ok_or_else(|| format!("there is no tool {id}"))?;
-        Ok(self.tools.remove(at))
+        let removed = self.tools.remove(at);
+        // the number of a removed tool is not given to another one
+        self.next_id = self.next_id.max(removed.id.saturating_add(1));
+        Ok(removed)
     }
 
     /// Adds what a job used to the counters of a tool.

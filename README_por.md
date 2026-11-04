@@ -78,6 +78,7 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 * **Testes com entradas danificadas:** os testes também dão ficheiros vazios, lixo, números enormes e ficheiros cortados, e nenhum pode entrar em pânico.
 * **Sem adivinhar:** um valor sem sentido é um erro que diz qual e porquê, nunca um resultado que apenas parece certo.
 * **Sem código unsafe:** `#![forbid(unsafe_code)]` na biblioteca e no programa.
+* **Um armazém que aguenta:** o número de uma ferramenta retirada nunca volta a ser dado (o armazém guarda `next_id`), um id que não é um número inteiro diz-se como tal, o CSV recusa texto depois de umas aspas de fecho, um texto que começa como uma fórmula (`=`, `+`, `-`, `@`) escreve-se como texto para que a folha de cálculo não o execute, o material tem um limite, `--holes` é um número inteiro, uma opção desconhecida é um erro e `calc` diz que o resultado de uma fresa em V ou de um gravador é só um ponto de partida.
 
 ## 🔒 Segurança e proteção
 

@@ -3,6 +3,11 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **A number that was given is not given again:** the crib keeps `next_id`, so removing the last tool and adding another does not reuse its number; an id that is not a whole positive number is told as such.
+- **The CSV is stricter and safer:** text after a closing quote is an error, a flute count that is too large has its own message, and a text that starts like a formula is written with a quote mark in front so that a spreadsheet shows it as text.
+- **The material has a limit:** at most 80 characters and no control character.
+- **`--holes` is a whole number** like the other counters, and an unknown option or an extra word is an error.
+- **`calc` says when the result is only a starting point:** for a V-bit and an engraver, whose cut depends on the depth.
 
 ## [0.0.4] - Audit fixes, the new reading limits, tests and the application icon
 

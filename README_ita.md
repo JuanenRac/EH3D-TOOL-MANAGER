@@ -78,6 +78,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Test con input danneggiati:** i test forniscono anche file vuoti, spazzatura, numeri enormi e file tagliati, e nessuno può andare in panico.
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
+* **Un magazzino che regge:** il numero di un utensile rimosso non viene più riassegnato (il magazzino conserva `next_id`), un id che non è un numero intero viene indicato come tale, il CSV rifiuta testo dopo le virgolette di chiusura, un testo che inizia come una formula (`=`, `+`, `-`, `@`) viene scritto come testo perché il foglio di calcolo non lo esegua, il materiale ha un limite, `--holes` è un numero intero, un'opzione sconosciuta è un errore e `calc` dice che il risultato per una fresa a V o un incisore è solo un punto di partenza.
 
 ## 🔒 Sicurezza e protezione
 

@@ -323,3 +323,85 @@ fn the_records_of_a_csv_keep_a_quoted_comma_a_doubled_quote_and_a_line_break_ins
     assert_eq!(r.len(), 2);
     assert_eq!(parse_records("").unwrap(), Vec::<Vec<String>>::new());
 }
+
+#[test]
+fn a_number_that_was_given_is_not_given_again_after_its_tool_was_removed() {
+    let mut c = Crib::default();
+    assert_eq!(c.add(drill("a")).unwrap(), 1);
+    assert_eq!(c.add(drill("b")).unwrap(), 2);
+    c.remove(2).unwrap();
+    assert_eq!(
+        c.add(drill("c")).unwrap(),
+        3,
+        "the number 2 must not come back"
+    );
+    // it survives the file: a crib written and read again goes on from there
+    c.remove(3).unwrap();
+    let mut back = from_json(&to_json(&c)).unwrap();
+    assert_eq!(back.add(drill("d")).unwrap(), 4);
+    // a crib without the field (an older file) still goes above every number in use
+    let old = from_json(
+        r#"{"schema_version":1,"tools":[{"id":7,"name":"x","kind":"drill","diameter_mm":1}]}"#,
+    )
+    .unwrap();
+    assert_eq!(old.next_id, 8);
+}
+
+#[test]
+fn an_id_that_is_not_a_whole_positive_number_is_told_as_such() {
+    for id in ["1.5", "-1", "\"2\"", "4294967296"] {
+        let json =
+            format!(r#"{{"tools":[{{"id":{id},"name":"a","kind":"drill","diameter_mm":1}}]}}"#);
+        let e = from_json(&json).unwrap_err();
+        assert!(e.contains("whole number") && e.contains("id"), "{id}: {e}");
+    }
+}
+
+#[test]
+fn the_material_has_a_limit_and_no_control_characters() {
+    let mut t = drill("a");
+    t.material = "x".repeat(MAX_NAME + 1);
+    assert!(t.validate().is_err());
+    t.material = "carbide\nsteel".into();
+    assert!(t.validate().is_err());
+    t.material = "carbide".into();
+    assert!(t.validate().is_ok());
+}
+
+#[test]
+fn text_after_the_closing_quote_of_a_field_is_an_error_and_a_big_flute_count_has_its_own_message() {
+    let e = parse_records("a,\"b\"c,d\n").unwrap_err();
+    assert!(e.contains("closing quote"), "{e}");
+    assert!(parse_records("a,\"b\",d\n\"e\"\n").is_ok());
+    let row =
+        |flutes: &str| format!("{HEADER}\n1,a,drill,0.8,{flutes},0,,3.175,carbide,0,0,0,0,0\n");
+    let e = from_csv(&row("99999999999")).unwrap_err();
+    assert!(
+        e.contains("row 2") && e.contains("flutes") && e.contains("too large"),
+        "{e}"
+    );
+    let e = from_csv(&row("12")).unwrap_err();
+    assert!(e.contains("flutes") && e.contains("1 to 8"), "{e}");
+}
+
+#[test]
+fn a_text_that_a_spreadsheet_would_run_as_a_formula_is_written_as_text_and_read_back_whole() {
+    let mut c = Crib::default();
+    let mut t = drill("=HYPERLINK(\"http://x\")");
+    t.material = "@sum".into();
+    c.add(t).unwrap();
+    c.add(drill("+1")).unwrap();
+    c.add(drill("plain")).unwrap();
+    let text = to_csv(&c);
+    for line in text.lines().skip(1) {
+        assert!(
+            !line
+                .split(',')
+                .nth(1)
+                .unwrap_or("")
+                .starts_with(['=', '+', '-', '@']),
+            "{line}"
+        );
+    }
+    assert_eq!(from_csv(&text).unwrap(), c);
+}

@@ -18,8 +18,10 @@ pub fn to_json(crib: &Crib) -> String {
                    "holes": t.holes, "max_hours": t.max_hours, "max_holes": t.max_holes})
         })
         .collect();
-    serde_json::to_string_pretty(&json!({"schema_version": SCHEMA_VERSION, "tools": tools}))
-        .unwrap_or_default()
+    serde_json::to_string_pretty(
+        &json!({"schema_version": SCHEMA_VERSION, "next_id": crib.next_id, "tools": tools}),
+    )
+    .unwrap_or_default()
         + "\n"
 }
 
@@ -77,11 +79,18 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
         let kind =
             Kind::parse(item.get("kind").and_then(|k| k.as_str()).unwrap_or("")).map_err(fail)?;
         let mut t = Tool::new(name, kind, number(item, "diameter_mm", 0.0).map_err(fail)?);
-        t.id = item
-            .get("id")
-            .and_then(|n| n.as_u64())
-            .and_then(|n| u32::try_from(n).ok())
-            .unwrap_or(0);
+        t.id = match item.get("id") {
+            None | Some(Value::Null) => 0,
+            Some(v) => v
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .ok_or_else(|| {
+                    fail(format!(
+                        "the id must be a whole number from 1 to {}, not {v}",
+                        u32::MAX
+                    ))
+                })?,
+        };
         t.flutes = u32::try_from(whole(item, "flutes", 2).map_err(fail)?)
             .map_err(|_| fail("flutes is too large".into()))?;
         t.length_mm = number(item, "length_mm", 0.0).map_err(fail)?;
@@ -116,6 +125,18 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
         }
         crib.tools.push(t);
     }
+    // the next number is at least the one the file keeps and always above every number in use
+    let kept = match v.get("next_id") {
+        None | Some(Value::Null) => 0,
+        Some(n) => n
+            .as_u64()
+            .and_then(|n| u32::try_from(n).ok())
+            .ok_or_else(|| format!("next_id must be a whole number, not {n}"))?,
+    };
+    crib.next_id = match crib.tools.iter().map(|t| t.id).max() {
+        Some(used) => kept.max(used.saturating_add(1)),
+        None => kept,
+    };
     Ok(crib)
 }
 

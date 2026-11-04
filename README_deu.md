@@ -78,6 +78,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Tests mit beschädigten Eingaben:** Die Tests füttern auch leere Dateien, Datenmüll, riesige Zahlen und abgeschnittene Dateien; keiner darf in Panik geraten.
 * **Kein Raten:** Ein unsinniger Wert ist ein Fehler, der sagt welcher und warum, nie ein Ergebnis, das nur richtig aussieht.
 * **Kein unsafe-Code:** `#![forbid(unsafe_code)]` in Bibliothek und Programm.
+* **Ein Werkzeuglager, das hält:** die Nummer eines entfernten Werkzeugs wird nie wieder vergeben (das Lager merkt sich `next_id`), eine ID, die keine ganze Zahl ist, wird als solche gemeldet, das CSV lehnt Text nach einem schließenden Anführungszeichen ab, ein Text, der wie eine Formel beginnt (`=`, `+`, `-`, `@`), wird als Text geschrieben, damit die Tabellenkalkulation ihn nicht ausführt, das Material hat eine Grenze, `--holes` ist eine ganze Zahl, eine unbekannte Option ist ein Fehler, und `calc` sagt, dass das Ergebnis für einen V-Fräser oder Gravierstichel nur ein Ausgangspunkt ist.
 
 ## 🔒 Sicherheit und Schutz
 

@@ -4,11 +4,31 @@ use crate::model::{Crib, Kind, Tool};
 
 pub const HEADER: &str = "id,name,kind,diameter_mm,flutes,length_mm,tip_angle_deg,shank_mm,material,hours,meters,holes,max_hours,max_holes";
 
+/// A text that a spreadsheet would run as a formula when it opens the file starts with one of these.
+const FORMULA_START: [char; 6] = ['=', '+', '-', '@', '\t', '\r'];
+
+/// The text as it goes in the table: one that starts like a formula gets a quote mark in front (`'=1+1`), so that a spreadsheet shows it as text. `unformula` takes it away again.
+fn neutralise(text: &str) -> String {
+    if text.starts_with(FORMULA_START) {
+        format!("'{text}")
+    } else {
+        text.to_string()
+    }
+}
+
+fn unformula(text: &str) -> String {
+    match text.strip_prefix('\'') {
+        Some(rest) if rest.starts_with(FORMULA_START) => rest.to_string(),
+        _ => text.to_string(),
+    }
+}
+
 fn quote(text: &str) -> String {
+    let text = neutralise(text);
     if text.contains([',', '"', '\n', '\r']) {
         format!("\"{}\"", text.replace('"', "\"\""))
     } else {
-        text.to_string()
+        text
     }
 }
 
@@ -44,6 +64,8 @@ pub fn parse_records(text: &str) -> Result<Vec<Vec<String>>, String> {
     let mut record = Vec::new();
     let mut field = String::new();
     let mut quoted = false;
+    // true right after the quote that closes a field: only a comma or the end of the row may follow
+    let mut closed = false;
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {
         if quoted {
@@ -53,11 +75,18 @@ pub fn parse_records(text: &str) -> Result<Vec<Vec<String>>, String> {
                     chars.next();
                 } else {
                     quoted = false;
+                    closed = true;
                 }
             } else {
                 field.push(c);
             }
         } else {
+            if closed {
+                if !matches!(c, ',' | '\n' | '\r') {
+                    return Err(format!("there is '{c}' after the closing quote of a field"));
+                }
+                closed = false;
+            }
             match c {
                 '"' if field.is_empty() => quoted = true,
                 ',' => record.push(std::mem::take(&mut field)),
@@ -112,9 +141,14 @@ pub fn from_csv(text: &str) -> Result<Crib, String> {
                 .map_err(|_| format!("row {n}: {name} '{}' is not a whole number", row[k]))
         };
         let kind = Kind::parse(&row[2]).map_err(|e| format!("row {n}: {e}"))?;
-        let mut t = Tool::new(&row[1], kind, num(3, "diameter_mm")?);
+        let mut t = Tool::new(&unformula(&row[1]), kind, num(3, "diameter_mm")?);
         t.id = u32::try_from(int(0, "id")?).map_err(|_| format!("row {n}: the id is too large"))?;
-        t.flutes = u32::try_from(int(4, "flutes")?).unwrap_or(0);
+        t.flutes = u32::try_from(int(4, "flutes")?).map_err(|_| {
+            format!(
+                "row {n}: flutes '{}' is too large, it must be from 1 to 8",
+                row[4]
+            )
+        })?;
         t.length_mm = num(5, "length_mm")?;
         t.tip_angle_deg = if row[6].trim().is_empty() {
             None
@@ -122,7 +156,7 @@ pub fn from_csv(text: &str) -> Result<Crib, String> {
             Some(num(6, "tip_angle_deg")?)
         };
         t.shank_mm = num(7, "shank_mm")?;
-        t.material = row[8].clone();
+        t.material = unformula(&row[8]);
         t.hours = num(9, "hours")?;
         t.meters = num(10, "meters")?;
         t.holes = int(11, "holes")?;
@@ -140,6 +174,9 @@ pub fn from_csv(text: &str) -> Result<Crib, String> {
             return Err(format!("row {n}: the name '{}' is used twice", t.name));
         }
         crib.tools.push(t);
+    }
+    if let Some(used) = crib.tools.iter().map(|t| t.id).max() {
+        crib.next_id = used.saturating_add(1);
     }
     Ok(crib)
 }

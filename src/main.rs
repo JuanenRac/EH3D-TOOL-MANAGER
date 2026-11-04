@@ -2,6 +2,8 @@
 // Copyright (C) 2026 JuanenRac (Electro Hobby 3D). GPL-3.0-or-later.
 #![forbid(unsafe_code)]
 
+mod cli_args;
+
 use eh3d_tool_manager::calc::{feeds_speeds, Material};
 use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear};
 use eh3d_tool_manager::{csv, store};
@@ -24,36 +26,20 @@ KIND: drill, end-mill, v-bit, engraver, laser, nozzle. MATERIAL: fr4, aluminium,
 The feeds and speeds are starting points to try on a scrap board, not a promise.";
 
 fn flag(args: &mut Vec<String>, name: &str) -> Result<Option<f64>, String> {
-    if let Some(i) = args.iter().position(|a| a == name) {
-        let value = args
-            .get(i + 1)
-            .ok_or_else(|| format!("{name} needs a value"))?
-            .clone();
-        args.drain(i..=i + 1);
-        return value
-            .parse::<f64>()
-            .ok()
-            .filter(|v| v.is_finite())
-            .map(Some)
-            .ok_or_else(|| format!("{name} '{value}' is not a number"));
-    }
-    Ok(None)
+    cli_args::flag(args, name)?
+        .map(|value| cli_args::num(&value, name))
+        .transpose()
 }
 
 /// A flag that takes a whole number of 0 or more (`--flutes 2.9` or `--max-holes -5` are errors).
 fn whole_flag(args: &mut Vec<String>, name: &str) -> Result<Option<u64>, String> {
-    if let Some(i) = args.iter().position(|a| a == name) {
-        let value = args
-            .get(i + 1)
-            .ok_or_else(|| format!("{name} needs a value"))?
-            .clone();
-        args.drain(i..=i + 1);
-        return value
-            .parse::<u64>()
-            .map(Some)
-            .map_err(|_| format!("{name} '{value}' is not a whole number of 0 or more"));
-    }
-    Ok(None)
+    cli_args::flag(args, name)?
+        .map(|value| {
+            value
+                .parse::<u64>()
+                .map_err(|_| format!("{name} '{value}' is not a whole number of 0 or more"))
+        })
+        .transpose()
 }
 
 fn describe(w: Wear) -> String {
@@ -80,6 +66,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
     match cmd.as_str() {
         "init" => {
             need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
             if Path::new(&args[0]).exists() {
                 return Err(format!(
                     "{}: already exists; nothing was overwritten",
@@ -94,6 +81,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let max_hours = flag(&mut args, "--max-hours")?;
             let max_holes = whole_flag(&mut args, "--max-holes")?;
             need(&args, 4, "a file, a name, a kind and a diameter")?;
+            cli_args::finish(&args, 4)?;
             let file = Path::new(&args[0]);
             let mut crib = store::load(file)?;
             let diameter = args[3]
@@ -113,6 +101,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "list" => {
             need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
             for t in &store::load(Path::new(&args[0]))?.tools {
                 println!(
                     "{:>3}  {:<24} {:<9} {:>6.3} mm  {:>2} flutes  {:>7.1} h  {:>7} holes  {}",
@@ -131,9 +120,10 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "use" => {
             let hours = flag(&mut args, "--hours")?.unwrap_or(0.0);
             let meters = flag(&mut args, "--meters")?.unwrap_or(0.0);
-            let holes = flag(&mut args, "--holes")?.unwrap_or(0.0);
+            let holes = whole_flag(&mut args, "--holes")?.unwrap_or(0);
             need(&args, 2, "a file and a tool number")?;
-            if !(0.0..=1.0e12).contains(&holes) {
+            cli_args::finish(&args, 2)?;
+            if holes > 1_000_000_000_000 {
                 return Err(format!("--holes {holes} is not a count of holes"));
             }
             let file = Path::new(&args[0]);
@@ -141,13 +131,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let id = args[1]
                 .parse::<u32>()
                 .map_err(|_| format!("'{}' is not a tool number", args[1]))?;
-            let w = crib.record_use(id, hours, meters, holes as u64)?;
+            let w = crib.record_use(id, hours, meters, holes)?;
             store::save(&crib, file)?;
             println!("tool {id}: {}", describe(w));
             Ok(())
         }
         "wear" => {
             need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
             let crib = store::load(Path::new(&args[0]))?;
             let list = crib.to_replace();
             if list.is_empty() {
@@ -160,11 +151,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
         "export-csv" => {
             need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
             print!("{}", csv::to_csv(&store::load(Path::new(&args[0]))?));
             Ok(())
         }
         "import-csv" => {
             need(&args, 2, "a crib file and a CSV table")?;
+            cli_args::finish(&args, 2)?;
             let text =
                 std::fs::read_to_string(&args[1]).map_err(|e| format!("{}: {e}", args[1]))?;
             let crib = csv::from_csv(&text)?;
@@ -184,6 +177,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let flutes = whole_flag(&mut args, "--flutes")?;
             let angle = flag(&mut args, "--angle")?;
             need(&args, 4, "a kind, a diameter, a material and a maximum rpm")?;
+            cli_args::finish(&args, 4)?;
             let diameter = args[1]
                 .parse::<f64>()
                 .map_err(|_| format!("the diameter '{}' is not a number", args[1]))?;
@@ -197,13 +191,18 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 .map_err(|_| format!("the maximum rpm '{}' is not a number", args[3]))?;
             let c = feeds_speeds(&t, Material::parse(&args[2])?, max_rpm)?;
             println!(
-                "{} rpm, feed {} mm/min, plunge {} mm/min, pass {} mm{}",
+                "{} rpm, feed {} mm/min, plunge {} mm/min, pass {} mm{}{}",
                 c.rpm,
                 c.feed_mm_min,
                 c.plunge_mm_min,
                 c.pass_depth_mm,
                 if c.rpm_limited {
                     " (the spindle limits the speed)"
+                } else {
+                    ""
+                },
+                if matches!(t.kind, Kind::VBit | Kind::Engraver) {
+                    " - only a starting point: what a V-bit or an engraver cuts with depends on the depth, try it on a scrap board"
                 } else {
                     ""
                 }
