@@ -48,6 +48,7 @@ fn the_commands_of_the_readme_run_and_print_something() {
         let out = Command::new(BIN)
             .args(&args)
             .current_dir(root())
+            .env("EH3D_TOOLS_DIR", env!("CARGO_TARGET_TMPDIR"))
             .output()
             .expect("the program runs");
         assert!(

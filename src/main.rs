@@ -4,8 +4,9 @@
 
 mod cli_args;
 
-use eh3d_tool_manager::calc::{feeds_speeds, Material};
+use eh3d_tool_manager::calc::{feeds_speeds_with, Material};
 use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear};
+use eh3d_tool_manager::settings::{data_dir, Settings};
 use eh3d_tool_manager::{csv, store};
 use std::env;
 use std::path::Path;
@@ -23,7 +24,7 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG]
 
 KIND: drill, end-mill, v-bit, engraver, laser, nozzle. MATERIAL: fr4, aluminium, acrylic, wood, brass.
-The feeds and speeds are starting points to try on a scrap board, not a promise.";
+The feeds and speeds are starting points to try on a scrap board, not a promise. The numbers they are worked out with can be changed in tools.cfg (see tools.cfg.example).";
 
 fn flag(args: &mut Vec<String>, name: &str) -> Result<Option<f64>, String> {
     cli_args::flag(args, name)?
@@ -189,7 +190,9 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let max_rpm = args[3]
                 .parse::<f64>()
                 .map_err(|_| format!("the maximum rpm '{}' is not a number", args[3]))?;
-            let c = feeds_speeds(&t, Material::parse(&args[2])?, max_rpm)?;
+            // the surface speeds, the chip loads and the factors are the ones of tools.cfg (the defaults when there is none)
+            let params = Settings::load(&data_dir())?.params;
+            let c = feeds_speeds_with(&t, Material::parse(&args[2])?, max_rpm, &params)?;
             println!(
                 "{} rpm, feed {} mm/min, plunge {} mm/min, pass {} mm{}{}",
                 c.rpm,

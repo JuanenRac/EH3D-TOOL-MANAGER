@@ -1,0 +1,48 @@
+# tools.cfg: the settings of EH3D-TOOL-MANAGER. Copy this file as tools.cfg into the folder of the program
+# (the variable EH3D_TOOLS_DIR, or %APPDATA%\eh3d-tools on Windows, or ~/.config/eh3d-tools elsewhere).
+# One "key = value" per line; a line that starts with # is a comment; a value that makes no sense is an error that names its line.
+# Every value below is the default. The command line (eh3d-tools calc) and the window both use the numbers of the calculation below.
+
+# The language of the window: auto (follow the system), en, es, de, fr, it, ja, zh or pt.
+language = auto
+
+# The size of the window when it opens, in pixels (720 to 7680 wide, 480 to 4320 high).
+window_width = 1200
+window_height = 760
+
+# The crib file the window opens and saves. Without it, crib.json in the folder of the program.
+# crib_file = C:\EH3D\crib.json
+
+# The speed of the spindle the calculator starts with, in rpm (1000 to 400000).
+default_max_rpm = 24000
+
+# Surface speed of a carbide tool in metres a minute (1 to 2000), per material.
+surface_speed_fr4 = 100
+surface_speed_aluminium = 200
+surface_speed_acrylic = 150
+surface_speed_wood = 250
+surface_speed_brass = 120
+
+# Chip load per tooth as a fraction of the diameter of the tool (0.0005 to 0.5), per material.
+chip_fraction_fr4 = 0.015
+chip_fraction_aluminium = 0.02
+chip_fraction_acrylic = 0.04
+chip_fraction_wood = 0.03
+chip_fraction_brass = 0.02
+
+# A V-bit or an engraver works at the diameter of its point: the diameter of the tool is kept between these two numbers, in mm (0.01 to 10; the first not above the second).
+working_min_mm = 0.1
+working_max_mm = 0.5
+
+# The smallest diameter the chip load is multiplied by, in mm (0.01 to 10).
+min_working_mm = 0.1
+
+# The plunge of a drill is its speed times this number times its diameter (0.0001 to 1).
+drill_plunge = 0.01
+
+# The plunge of any other tool is its feed times this number (0.01 to 1).
+plunge_ratio = 0.3
+
+# The depth of a pass is the working diameter times this number (0.01 to 2), and at most max_pass_mm (0.01 to 25).
+pass_fraction = 0.5
+max_pass_mm = 1.0

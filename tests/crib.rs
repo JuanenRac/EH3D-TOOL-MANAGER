@@ -302,6 +302,8 @@ fn scratch(name: &str) -> PathBuf {
 fn cli(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_eh3d-tools"))
         .args(args)
+        // no settings file of the person's computer changes the numbers
+        .env("EH3D_TOOLS_DIR", env!("CARGO_TARGET_TMPDIR"))
         .output()
         .unwrap()
 }

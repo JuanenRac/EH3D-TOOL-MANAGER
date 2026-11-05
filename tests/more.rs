@@ -440,3 +440,34 @@ fn the_fraction_of_the_wear_puts_the_tools_in_order() {
     assert_eq!(Wear::Soon(0.95).fraction(), 0.95);
     assert!(Wear::Replace.fraction() > 1.0e300);
 }
+
+#[test]
+fn the_calc_command_uses_the_numbers_of_tools_cfg_and_refuses_a_bad_file() {
+    use std::process::Command;
+    let dir = std::env::temp_dir().join(format!("eh3d-tools-cfg-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let run = || {
+        Command::new(env!("CARGO_BIN_EXE_eh3d-tools"))
+            .args(["calc", "end-mill", "3", "fr4", "60000"])
+            .env("EH3D_TOOLS_DIR", &dir)
+            .output()
+            .unwrap()
+    };
+    let before = run();
+    assert!(before.status.success());
+    assert!(String::from_utf8_lossy(&before.stdout).starts_with("10610 rpm"));
+    std::fs::write(dir.join("tools.cfg"), "surface_speed_fr4 = 50\n").unwrap();
+    let after = run();
+    assert!(after.status.success());
+    assert!(String::from_utf8_lossy(&after.stdout).starts_with("5305 rpm"));
+    std::fs::write(dir.join("tools.cfg"), "\nsurface_speed_fr4 = 0\n").unwrap();
+    let bad = run();
+    assert!(!bad.status.success());
+    let message = String::from_utf8_lossy(&bad.stderr);
+    assert!(
+        message.contains("surface_speed_fr4") && message.contains("line 2"),
+        "{message}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
