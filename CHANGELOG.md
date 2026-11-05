@@ -3,6 +3,7 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+- **The validation job is the shared one of the documentation hub:** the checks of the manifest, the documents and the pictures run through the reusable workflow, fixed to a full commit of EH3D-DOCS whose actions are pinned by commit.
 - **A number that was given is not given again:** the crib keeps `next_id`, so removing the last tool and adding another does not reuse its number; an id that is not a whole positive number is told as such.
 - **The CSV is stricter and safer:** text after a closing quote is an error, a flute count that is too large has its own message, and a text that starts like a formula is written with a quote mark in front so that a spreadsheet shows it as text.
 - **The material has a limit:** at most 80 characters and no control character.
