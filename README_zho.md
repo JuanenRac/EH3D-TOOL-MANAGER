@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-tools`），有 71 个在电脑上运行的测试：管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速。目前还没有窗口，没有在机器上试过，也没有用大量真实文件验证过。
+**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-tools`），有 115 个在电脑上运行的测试：管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速。窗口（`eh3d-tools-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.5` |
 | 成熟度 | 脚手架 |
-| 测试 | 71 |
+| 测试 | 115 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -47,9 +47,9 @@
 |---|---|---|
 | 核心 | 🟡 | 管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速；已在电脑上用正常和损坏的输入测试，未用大量真实文件验证。 |
 | 命令行 | 🟡 | `eh3d-tools` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 71 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 115 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
-| 窗口 | 🔴 | 计划中：套件通用的 egui 窗口；目前只有命令行。 |
+| 窗口 | 🟠 | 已编写（egui，`--features gui`，程序 `eh3d-tools-gui`）：一个可用与命令行相同的检查添加、修改和移除刀具的表格、筛选和搜索、带库错误信息的 CSV 导入导出，以及显示公式和条件的进给与转速计算器；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
 | 文档 | 🟡 | 八种语言的 README、更新日志，以及由 `docs/` 绘制的两张图。 |
 
@@ -58,10 +58,11 @@
 * **刀具库**（`src/model.rs`）：钻头、立铣刀、V 形刀、雕刻刀、激光和吸嘴，含直径、刃数、长度、刀尖角和刀柄；每个值都会检查，重名会被拒绝，每把刀具有自己的编号。磨损计数或刃数如果不是整数，会连同字段名一起被拒绝，文件和命令行均如此。
 * **磨损**（`src/model.rs`）：每次作业后累加小时、米数和孔数；设置小时或孔数上限后，刀具分为良好、即将更换（达到 90 %）和需更换，`wear` 按最差优先列出。
 * **存储与进给转速**（`src/store.rs`、`src/csv.rs`、`src/calc.rs`）：刀具库可存为 JSON 文档或供电子表格使用的 CSV 表，读取时每个错误都指出行号；按 FR4、铝、亚克力、木材和黄铜计算切削速度和每齿进给，并受主轴限制。
+* **窗口**（`src/window.rs`、`src/gui.rs`；`--features gui`，程序 `eh3d-tools-gui`）：刀具表，以及用与命令行相同的检查添加、修改和移除刀具的表单（已移除刀具的编号不会再次分配）、筛选和搜索、把刀具的使用量累加到计数器、带库错误信息的 CSV 导入导出，以及显示每个数值的公式和条件的计算器；计算所用的数值（切削速度、每齿进给、系数）在 `tools.cfg` 中，也可在窗口中修改。状态、操作、设置和文字都是有测试的普通代码；绘制层很薄。已编写，尚未在屏幕上看过。
 
 ## 🧩 在 EH3D 中的角色
 
-EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。目前它以库和命令行的形式工作；与套件其他程序外观一致的窗口在计划中。它读写简单的文件，因此可以单独使用，也可以用在其他程序之间。
+EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。它以库、命令行的形式工作，用 `gui` 特性构建后还是与套件其他程序外观一致的窗口（`eh3d-tools-gui`）。它读写简单的文件，因此可以单独使用，也可以用在其他程序之间。
 
 ## 🏛️ 架构
 
@@ -98,11 +99,17 @@ EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。目前它以库�
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  逻辑的一部分
+│   ├── cli_args.rs                              命令行参数（严格解析）
 │   ├── csv.rs                                   逻辑的一部分
+│   ├── gui.rs                                   窗口（egui，gui 特性）：绘制状态并传递用户的操作
+│   ├── gui_main.rs                              作为独立程序的窗口，在 Windows 上没有控制台
+│   ├── lang.rs                                  窗口的文字（八种语言）
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── model.rs                                 逻辑的一部分
-│   └── store.rs                                 逻辑的一部分
+│   ├── settings.rs                              tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值
+│   ├── store.rs                                 逻辑的一部分
+│   └── window.rs                                无需屏幕的窗口状态：刀具库、表单、筛选和计算器
 ├── tests/
 │   └── crib.rs                                  库和命令行的测试
 ├── docs/
@@ -116,30 +123,38 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          固定的 Rust 工具链
 ├── CHANGELOG.md                                 每个版本的变更
 ├── SECURITY.md SUPPORT.md                       如何报告漏洞及在哪里提问
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
+└── tools.cfg.example                            tools.cfg 的所有设置及其默认值
 ```
 
 ## ⚙️ 配置
 
-目前还没有配置文件：用户的选择通过命令行参数给出（见接口），每个默认值都写在命令的帮助中（`eh3d-tools help`）。固定的限制是代码中的具名常量，并有测试覆盖。
+配置文件是程序文件夹中的 `tools.cfg`（环境变量 `EH3D_TOOLS_DIR`，Windows 上为 `%APPDATA%\eh3d-tools`，其他系统为 `~/.config/eh3d-tools`），由窗口和 `calc` 命令读取：窗口的语言和大小、刀具库文件、计算器启动时使用的主轴转速，以及计算进给与转速所用的每个数值（每种材料的切削速度和每齿进给，以及下刀和单次切深的系数）都是 `键 = 值` 的行，其限制会被检查，错误行会在错误信息中指出。`tools.cfg.example` 列出了每个键及其默认值。除此之外，用户的选择通过命令行参数给出（见接口），每个默认值都写在命令的帮助中（`eh3d-tools help`）。值的限制是代码中的具名常量，并有测试覆盖。
 
 ## 🚀 快速开始
 
-需要稳定版 Rust 工具链（1.75 或更新）。
+需要稳定版 Rust 工具链（1.95 或更新）。
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- calc drill 0.8 fr4 24000
+# 窗口（需要 gui 特性）
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-tools-gui
 ```
 
 ## 🧪 测试
 
-测试套件有 71 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` 以及 `python -I tools/ci_validate.py`。
+测试套件有 115 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
 版本号位于 `Cargo.toml` 和 `eh3d.project.json`；每个版本在 [CHANGELOG.md](CHANGELOG.md) 中都有条目。`build.bat` / `build.sh` 构建程序，`test.bat` / `test.sh` 运行测试，`run.bat` / `run.sh` 用示例运行。版本发布在 GitHub 上。
+
+### 下载
+
+每个版本都包含适用于 Windows（64 位和 32 位）、Linux（64 位）和 macOS（Apple silicon 和 Intel）的命令行程序和窗口，文件名为 `<名称>-<版本>-<系统>.zip`（Windows）或 `.tar.gz`，内含两个程序、许可证、readme、图标和 `tools.cfg.example`。文件由 GitHub Actions 构建并列在 `SHA256SUMS` 中。要校验下载文件，请把它的哈希与旁边的 `.sha256` 文件比较（`sha256sum -c`）。
 
 ## 📂 仓库结构
 
@@ -152,11 +167,24 @@ cargo run --release -- calc drill 0.8 fr4 24000
 
 ```text
 EH3D-TOOL-MANAGER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      Gerber RS-274X 读取器
-│   ├── eh3d-parser-excellon/                    Excellon 钻孔文件读取器
-│   └── eh3d-parser-gcode/                       G 代码读取器和模态解释器
-├── docs/                                        READERS.md：每个读取器的承诺和不做的事，以及两张图的数据
+├── src/
+│   ├── calc.rs                                  逻辑的一部分
+│   ├── cli_args.rs                              命令行参数（严格解析）
+│   ├── csv.rs                                   逻辑的一部分
+│   ├── gui.rs                                   窗口（egui，gui 特性）：绘制状态并传递用户的操作
+│   ├── gui_main.rs                              作为独立程序的窗口，在 Windows 上没有控制台
+│   ├── lang.rs                                  窗口的文字（八种语言）
+│   ├── lib.rs                                   库：每个命令所使用的部分
+│   ├── main.rs                                  命令行
+│   ├── model.rs                                 逻辑的一部分
+│   ├── settings.rs                              tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值
+│   ├── store.rs                                 逻辑的一部分
+│   └── window.rs                                无需屏幕的窗口状态：刀具库、表单、筛选和计算器
+├── tests/
+│   └── crib.rs                                  库和命令行的测试
+├── docs/
+│   ├── architecture.json                        架构图数据
+│   └── structure.json                           结构图数据
 ├── tools/                                       CI 和 README 检查及绘图工具
 ├── images/                                      横幅图以及架构和仓库结构图片
 ├── .github/                                     CI 与发布工作流、Issue 和 PR 模板
@@ -165,7 +193,8 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          固定的 Rust 工具链
 ├── CHANGELOG.md                                 每个版本的变更
 ├── SECURITY.md SUPPORT.md                       如何报告漏洞及在哪里提问
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
+└── tools.cfg.example                            tools.cfg 的所有设置及其默认值
 ```
 
 </details>
@@ -174,14 +203,15 @@ EH3D-TOOL-MANAGER/
 
 **目前已知的限制**
 
-* 还没有窗口：只有库和命令行。
+* 窗口已编写且其逻辑已测试，但尚未构建，也没有在屏幕上看过。
+* 窗口通过输入路径来指定刀具库文件和 CSV 表（还没有文件对话框）。
 * 没有在机器上试过，也没有用大量真实文件验证过，也没有独立审查。
 * 刀具库是 JSON 文件而不是数据库；进给和转速是取自典型值的起点，没有在机器上核对；套件的程序还不读取刀具库。
 
 **下一步**
 
 * 让 DRILLPRO、ROUTEPRO 和 CAM 程序读取刀具库而不是各自的刀具表，并添加每把刀具的 2D 轮廓。
-* 添加与套件程序外观一致、支持八种语言的窗口。
+* 在每个系统的屏幕上查看窗口，并调整发现的问题。
 * 用真实文件和套件的其他程序进行试用。
 
 ## 🌍 语言

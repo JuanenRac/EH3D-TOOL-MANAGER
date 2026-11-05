@@ -2,7 +2,7 @@
   "repo": "EH3D-TOOL-MANAGER",
   "ecosystem": "eh3d",
   "tagline": "Tools, their wear and where to start the feeds and speeds.",
-  "description": "EH3D-TOOL-MANAGER is a Rust library and command line for the tool crib of the suite: tools with their geometry and wear, JSON and CSV storage and starting feeds and speeds by material. The CAM programs do not read it yet.",
+  "description": "EH3D-TOOL-MANAGER is a Rust library and command line for the tool crib of the suite: tools with their geometry and wear, JSON and CSV storage and starting feeds and speeds by material. Built with the gui feature it also has a window (egui) with the table of the tools, a form, filters, CSV import and export and a calculator that shows its formulas; the numbers of the calculation are read from tools.cfg. The CAM programs do not read the crib yet.",
   "columns": [
     "WHO USES IT",
     "THIS REPOSITORY",
@@ -73,25 +73,43 @@
       ]
     },
     {
+      "id": "window",
+      "column": 1,
+      "level": "untested",
+      "title": "window (gui feature)",
+      "lines": [
+        "state, settings and words are",
+        "tested; the drawing is not seen"
+      ],
+      "code": [
+        "src/window.rs::pub struct Window",
+        "src/settings.rs::pub struct Settings",
+        "src/lang.rs::pub enum Lang",
+        "src/gui.rs::pub fn run"
+      ]
+    },
+    {
       "id": "file",
       "column": 2,
       "level": "external",
       "title": "The crib file",
       "lines": [
         "a JSON file or a CSV table",
-        "on the disk"
+        "on the disk, and tools.cfg"
       ]
     },
     {
       "id": "std",
       "column": 2,
       "level": "external",
-      "title": "serde_json",
+      "title": "serde_json, egui",
       "lines": [
-        "the only dependency"
+        "serde_json, plus egui for",
+        "the gui feature only"
       ],
       "code": [
-        "Cargo.toml::[dependencies]"
+        "Cargo.toml::[dependencies]",
+        "Cargo.toml::eframe"
       ]
     }
   ],
@@ -122,12 +140,18 @@
       "from": "store",
       "to": "std",
       "level": "tested"
+    },
+    {
+      "from": "person",
+      "to": "window",
+      "level": "untested"
     }
   ],
   "legend": {
-    "tested": "covered by tests on a computer (71 tests)",
+    "tested": "covered by tests on a computer (115 tests)",
     "config": "planned, not used today",
-    "external": "a person, a file or another repository"
+    "external": "a person, a file or another repository",
+    "untested": "written, not built or looked at on a screen yet"
   },
-  "footer": "The numbers are starting points; try them on a scrap board."
+  "footer": "The numbers are starting points; try them on a scrap board. The window has not been looked at on a screen."
 }

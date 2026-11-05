@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 71 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Ainda não tem janela, não foi experimentado numa máquina e não foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 115 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.5` |
 | Maturidade | Estrutura inicial |
-| Testes | 71 |
+| Testes | 115 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -47,9 +47,9 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 |---|---|---|
 | Núcleo | 🟡 | guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material; testado num computador com entradas normais e danificadas, não com uma coleção de ficheiros reais. |
 | Linha de comandos | 🟡 | `eh3d-tools` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 71 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 115 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
-| Janela | 🔴 | Previsto: a janela egui comum à suíte; hoje existe apenas a linha de comandos. |
+| Janela | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-tools-gui`): uma tabela das ferramentas que se adicionam, alteram e removem com as verificações da linha de comandos, filtros e pesquisa, importação e exportação de CSV com os erros da biblioteca e uma calculadora de avanços e velocidades que mostra as suas fórmulas e condições; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
 | Documentação | 🟡 | README em oito idiomas, o registo de alterações e as duas imagens desenhadas a partir de `docs/`. |
 
@@ -58,10 +58,11 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 * **O armazém** (`src/model.rs`): brocas, fresas, fresas em V, gravadores, lasers e bicos com diâmetro, lâminas, comprimento, ângulo de ponta e haste; cada valor é verificado e um nome repetido é recusado; cada ferramenta recebe o seu número. Um contador de desgaste ou um número de arestas que não seja inteiro é recusado com o nome do campo, nos ficheiros e na linha de comandos.
 * **O desgaste** (`src/model.rs`): horas, metros e furos somam-se após cada trabalho; com um limite de horas ou furos, uma ferramenta está boa, para trocar em breve (a partir de 90 %) ou para trocar, e `wear` lista as piores primeiro.
 * **Armazenamento e avanços e velocidades** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): o armazém como documento JSON ou tabela CSV para uma folha de cálculo, lido com cuidado e com a linha indicada em cada erro; velocidade de corte e avanço por dente para FR4, alumínio, acrílico, madeira e latão, limitados pelo fuso.
+* **A janela** (`src/window.rs`, `src/gui.rs`; `--features gui`, programa `eh3d-tools-gui`): uma tabela das ferramentas com um formulário para as adicionar, alterar e remover com as mesmas verificações da linha de comandos (o número de uma ferramenta removida não volta a ser dado), filtros e pesquisa, a utilização de uma ferramenta somada aos seus contadores, importação e exportação de CSV com os erros da biblioteca e uma calculadora que mostra a fórmula e as condições de cada número; os números com que trabalha (velocidades de corte, avanços por dente, fatores) estão em `tools.cfg` e podem ser alterados na janela. O estado, as ações, as definições e as palavras são código simples com testes; o desenho é fino. Escrita, ainda não vista num ecrã.
 
 ## 🧩 Papel no EH3D
 
-EH3D-TOOL-MANAGER é um programa da EH3D Fabrication Suite. Hoje funciona como biblioteca e linha de comandos; a sua janela, com o aspeto que os outros programas da suíte partilham, está prevista. Lê e escreve ficheiros simples, por isso pode ser usado sozinho ou entre os outros programas.
+EH3D-TOOL-MANAGER é um programa da EH3D Fabrication Suite. Funciona como biblioteca, como linha de comandos e, compilado com a funcionalidade `gui`, como janela (`eh3d-tools-gui`) com o aspeto que os outros programas da suíte partilham. Lê e escreve ficheiros simples, por isso pode ser usado sozinho ou entre os outros programas.
 
 ## 🏛️ Arquitetura
 
@@ -98,11 +99,17 @@ A biblioteca é `eh3d_tool_manager` (`use eh3d_tool_manager::...`); a linha de c
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  uma parte da lógica
+│   ├── cli_args.rs                              os argumentos da linha de comandos, lidos com rigor
 │   ├── csv.rs                                   uma parte da lógica
+│   ├── gui.rs                                   a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz
+│   ├── gui_main.rs                              a janela como programa à parte, sem consola no Windows
+│   ├── lang.rs                                  as palavras da janela nos oito idiomas
 │   ├── lib.rs                                   a biblioteca: o que cada comando usa
 │   ├── main.rs                                  a linha de comandos
 │   ├── model.rs                                 uma parte da lógica
-│   └── store.rs                                 uma parte da lógica
+│   ├── settings.rs                              as definições de tools.cfg: idioma, tamanho da janela, ficheiro do armazém e os números do cálculo
+│   ├── store.rs                                 uma parte da lógica
+│   └── window.rs                                o estado da janela sem ecrã: o armazém, o formulário, os filtros e a calculadora
 ├── tests/
 │   └── crib.rs                                  testes da biblioteca e da linha de comandos
 ├── docs/
@@ -116,30 +123,38 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          a toolchain de Rust fixada
 ├── CHANGELOG.md                                 o que mudou em cada versão
 ├── SECURITY.md SUPPORT.md                       como comunicar uma vulnerabilidade e onde perguntar
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+└── tools.cfg.example                            todas as definições de tools.cfg com o valor predefinido
 ```
 
 ## ⚙️ Configuração
 
-Ainda não há ficheiro de configuração: o que a pessoa escolhe é dado como argumentos da linha de comandos (ver Interfaces) e cada valor por omissão está escrito na ajuda do comando (`eh3d-tools help`). Os limites fixos são constantes com nome no código, cobertas por testes.
+O ficheiro de configuração é `tools.cfg`, na pasta do programa (a variável `EH3D_TOOLS_DIR`, ou `%APPDATA%\eh3d-tools` no Windows, ou `~/.config/eh3d-tools` nos outros sistemas), lido pela janela e pelo comando `calc`: o idioma e o tamanho da janela, o ficheiro do armazém, a velocidade do fuso com que a calculadora arranca e cada número com que se calculam os avanços e velocidades (a velocidade de corte e o avanço por dente de cada material e os fatores da penetração e da profundidade de passagem) são linhas `chave = valor`, com os limites verificados e uma linha má nomeada no erro. `tools.cfg.example` lista cada chave com o valor por omissão. Para além disso, o que a pessoa escolhe é dado como argumentos da linha de comandos (ver Interfaces) e cada valor por omissão está escrito na ajuda do comando (`eh3d-tools help`). Os limites de um valor são constantes com nome no código, cobertas por testes.
 
 ## 🚀 Início rápido
 
-Precisa de uma cadeia de ferramentas Rust estável (1.75 ou mais recente).
+Precisa de uma cadeia de ferramentas Rust estável (1.95 ou mais recente).
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- calc drill 0.8 fr4 24000
+# a janela (precisa da funcionalidade gui)
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-tools-gui
 ```
 
 ## 🧪 Testes
 
-O conjunto tem 71 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 115 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
 A versão está em `Cargo.toml` e em `eh3d.project.json`; cada versão tem a sua entrada em [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` compilam o programa, `test.bat` / `test.sh` executam os testes e `run.bat` / `run.sh` executam-no com um exemplo. As versões são publicadas no GitHub.
+
+### Transferências
+
+Cada versão traz o programa de linha de comandos e a janela para Windows (64 e 32 bits), Linux (64 bits) e macOS (Apple silicon e Intel), como `<nome>-<versão>-<sistema>.zip` (Windows) ou `.tar.gz` com os dois programas, a licença, o readme, o ícone e `tools.cfg.example`. Os ficheiros são construídos pelo GitHub Actions e listados em `SHA256SUMS`. Para verificar uma transferência, compare o seu hash com o ficheiro `.sha256` ao lado (`sha256sum -c`).
 
 ## 📂 Estrutura do repositório
 
@@ -152,11 +167,24 @@ A versão está em `Cargo.toml` e em `eh3d.project.json`; cada versão tem a sua
 
 ```text
 EH3D-TOOL-MANAGER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      leitor Gerber RS-274X
-│   ├── eh3d-parser-excellon/                    leitor de ficheiros de furação Excellon
-│   └── eh3d-parser-gcode/                       leitor e intérprete modal de G-code
-├── docs/                                        READERS.md, o que cada leitor promete e o que não faz, e os dados das duas imagens
+├── src/
+│   ├── calc.rs                                  uma parte da lógica
+│   ├── cli_args.rs                              os argumentos da linha de comandos, lidos com rigor
+│   ├── csv.rs                                   uma parte da lógica
+│   ├── gui.rs                                   a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz
+│   ├── gui_main.rs                              a janela como programa à parte, sem consola no Windows
+│   ├── lang.rs                                  as palavras da janela nos oito idiomas
+│   ├── lib.rs                                   a biblioteca: o que cada comando usa
+│   ├── main.rs                                  a linha de comandos
+│   ├── model.rs                                 uma parte da lógica
+│   ├── settings.rs                              as definições de tools.cfg: idioma, tamanho da janela, ficheiro do armazém e os números do cálculo
+│   ├── store.rs                                 uma parte da lógica
+│   └── window.rs                                o estado da janela sem ecrã: o armazém, o formulário, os filtros e a calculadora
+├── tests/
+│   └── crib.rs                                  testes da biblioteca e da linha de comandos
+├── docs/
+│   ├── architecture.json                        dados da imagem de Arquitetura
+│   └── structure.json                           dados da imagem de Estrutura
 ├── tools/                                       verificação da CI e do README e ferramentas de imagens
 ├── images/                                      banner e as imagens de Arquitetura e Estrutura do repositório
 ├── .github/                                     fluxos de CI e de publicação, modelos de issues e pull requests
@@ -165,7 +193,8 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          a toolchain de Rust fixada
 ├── CHANGELOG.md                                 o que mudou em cada versão
 ├── SECURITY.md SUPPORT.md                       como comunicar uma vulnerabilidade e onde perguntar
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   como contribuir, o código de conduta e a licença
+└── tools.cfg.example                            todas as definições de tools.cfg com o valor predefinido
 ```
 
 </details>
@@ -174,14 +203,15 @@ EH3D-TOOL-MANAGER/
 
 **Limites conhecidos hoje**
 
-* Ainda não tem janela: existem apenas a biblioteca e a linha de comandos.
+* A janela está escrita e a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã.
+* A janela pede o ficheiro do armazém e a tabela CSV como caminhos escritos (ainda não há diálogo de ficheiros).
 * Não foi experimentado numa máquina nem com uma coleção de ficheiros reais e não teve revisão independente.
 * O armazém é um ficheiro JSON, não uma base de dados; os avanços e velocidades são pontos de partida de valores típicos e não foram verificados numa máquina; os programas da suíte ainda não leem o armazém.
 
 **A seguir**
 
 * Fazer o DRILLPRO, o ROUTEPRO e os programas CAM lerem o armazém em vez das suas tabelas próprias, e acrescentar o perfil 2D de cada ferramenta.
-* Acrescentar a janela com o aspeto partilhado pelos programas da suíte, nos oito idiomas.
+* Ver a janela num ecrã de cada sistema e ajustar o que se encontrar.
 * Experimentá-lo com ficheiros reais e com os outros programas da suíte.
 
 ## 🌍 Idiomas

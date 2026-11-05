@@ -8,7 +8,8 @@
   "technologies": [
     "Rust",
     "serde_json",
-    "CSV"
+    "CSV",
+    "egui"
   ],
   "deployment_target": "user-pc",
   "maturity": "scaffolding",
@@ -17,7 +18,7 @@
   "family": "CNC Workflow Tools",
   "parent": null,
   "build": "cargo build --release; cargo test",
-  "notes": "Scaffolding v0.0.5: a library and a command line for the tool crib: drills, end mills, V-bits, engravers, lasers and nozzles with their geometry, wear counters (hours, metres, holes) with limits and warnings, JSON and CSV storage, and starting feeds and speeds by material limited by the spindle. No window, no database (the crib is a JSON file) and the numbers are starting points that have not been tried on a machine.",
+  "notes": "Scaffolding v0.0.5: a library, a command line and, built with the gui feature, a window (egui) for the tool crib: drills, end mills, V-bits, engravers, lasers and nozzles with their geometry, wear counters (hours, metres, holes) with limits and warnings, JSON and CSV storage, and starting feeds and speeds by material limited by the spindle, with the numbers of the calculation in tools.cfg. The window (a table of the tools with a form, filters, CSV import and export, and a calculator that shows its formulas and conditions) is written and its logic is tested, but it has not been built or looked at on a screen. No database (the crib is a JSON file) and the numbers are starting points that have not been tried on a machine.",
   "native_version": {
     "file": "Cargo.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\""

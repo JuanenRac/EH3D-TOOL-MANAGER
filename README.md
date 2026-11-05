@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 71 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. It has no window yet, it has not been tried on a machine and it has not been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 115 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Maturity | Scaffolding |
-| Tests | 71 |
+| Tests | 115 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,9 +47,9 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 71 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 115 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
-| Window | 🔴 | Planned: the egui window common to the suite; today there is only the command line. |
+| Window | 🟠 | Written (egui, `--features gui`, program `eh3d-tools-gui`): a table of the tools that are added, changed and removed with the checks of the command line, filters and search, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows its formulas and conditions; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
 | Documentation | 🟡 | README in eight languages, the changelog and the two pictures drawn from `docs/`. |
 
@@ -58,10 +58,11 @@ Each line is one part of this repository and the light says how far it is today.
 * **The crib** (`src/model.rs`): drills, end mills, V-bits, engravers, lasers and nozzles with diameter, flutes, length, tip angle and shank; every value is checked and a repeated name is refused; each tool gets its own number. A wear counter or a number of flutes that is not a whole number is refused with the name of the field, in the files and on the command line.
 * **The wear** (`src/model.rs`): hours, metres and holes are added after each job; with a limit of hours or holes set, a tool is good, to replace soon (from 90 %) or to replace, and `wear` lists the worst first.
 * **Storage and feeds and speeds** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): the crib as a JSON document or a CSV table for a spreadsheet, read with care and with the row named in every error; surface speed and chip load for FR4, aluminium, acrylic, wood and brass, limited by the spindle.
+* **The window** (`src/window.rs`, `src/gui.rs`; `--features gui`, program `eh3d-tools-gui`): a table of the tools with a form to add, change and remove them with the same checks as the command line (the number of a removed tool is never given again), filters and search, the use of a tool added to its counters, CSV import and export with the errors of the library, and a calculator that shows the formula and the conditions of every number; the numbers it works with (surface speeds, chip loads, factors) are in `tools.cfg` and can be changed in the window. The state, the actions, the settings and the words are plain code with tests; the drawing is thin. Written, not seen on a screen yet.
 
 ## 🧩 Role in EH3D
 
-EH3D-TOOL-MANAGER is one program of the EH3D Fabrication Suite. Today it works as a library and a command line; its window, in the look the other programs of the suite share, is planned. It reads and writes plain files, so it can be used on its own or between the other programs.
+EH3D-TOOL-MANAGER is one program of the EH3D Fabrication Suite. It works as a library, a command line and, built with the `gui` feature, a window (`eh3d-tools-gui`) in the look the other programs of the suite share. It reads and writes plain files, so it can be used on its own or between the other programs.
 
 ## 🏛️ Architecture
 
@@ -98,11 +99,17 @@ The library is `eh3d_tool_manager` (`use eh3d_tool_manager::...`); the command l
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  a part of the logic
+│   ├── cli_args.rs                              the arguments of the command line, read strictly
 │   ├── csv.rs                                   a part of the logic
+│   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
+│   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
+│   ├── lang.rs                                  the words of the window in the eight languages
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── model.rs                                 a part of the logic
-│   └── store.rs                                 a part of the logic
+│   ├── settings.rs                              the settings of tools.cfg: language, window size, crib file and the numbers of the calculation
+│   ├── store.rs                                 a part of the logic
+│   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
 ├── tests/
 │   └── crib.rs                                  tests of the library and the command line
 ├── docs/
@@ -116,30 +123,38 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+└── tools.cfg.example                            every setting of tools.cfg with its default
 ```
 
 ## ⚙️ Configuration
 
-There is no configuration file yet: what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-tools help`). The fixed limits live in the code as named constants and are covered by tests.
+The configuration file is `tools.cfg` in the folder of the program (the variable `EH3D_TOOLS_DIR`, or `%APPDATA%\eh3d-tools` on Windows, or `~/.config/eh3d-tools` elsewhere), read by the window and by the `calc` command: the language and the size of the window, the file of the crib, the spindle speed the calculator starts with and every number the feeds and speeds are worked out with (the surface speed and the chip load of each material and the factors of the plunge and of the depth of a pass) are lines `key = value`, with their limits checked and a bad line named in the error. `tools.cfg.example` lists every key with its default. Apart from it, what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-tools help`). The limits of a value are named constants of the code and are covered by tests.
 
 ## 🚀 Quick start
 
-You need a stable Rust toolchain (1.75 or newer).
+You need a stable Rust toolchain (1.95 or newer).
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- calc drill 0.8 fr4 24000
+# the window (needs the gui feature)
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-tools-gui
 ```
 
 ## 🧪 Testing
 
-The suite has 71 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 115 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
 The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has its entry in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` build the program, `test.bat` / `test.sh` run the tests and `run.bat` / `run.sh` run it with a sample. Releases are published on GitHub.
+
+### Downloads
+
+Each release has the command line program and the window for Windows (64 and 32 bits), Linux (64 bits) and macOS (Apple silicon and Intel), as `<name>-<version>-<system>.zip` (Windows) or `.tar.gz` with the two programs, the licence, the readme, the icon and `tools.cfg.example`. The files are built by GitHub Actions and listed in `SHA256SUMS`. To check a download, compare its hash with the `.sha256` file next to it (`sha256sum -c`).
 
 ## 📂 Repository Structure
 
@@ -152,11 +167,24 @@ The version lives in `Cargo.toml` and in `eh3d.project.json`; each version has i
 
 ```text
 EH3D-TOOL-MANAGER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      Gerber RS-274X reader
-│   ├── eh3d-parser-excellon/                    Excellon drill file reader
-│   └── eh3d-parser-gcode/                       G-code reader and modal interpreter
-├── docs/                                        READERS.md, what every reader promises and what it does not do, and the data of the two pictures
+├── src/
+│   ├── calc.rs                                  a part of the logic
+│   ├── cli_args.rs                              the arguments of the command line, read strictly
+│   ├── csv.rs                                   a part of the logic
+│   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
+│   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
+│   ├── lang.rs                                  the words of the window in the eight languages
+│   ├── lib.rs                                   the library: what every command uses
+│   ├── main.rs                                  the command line
+│   ├── model.rs                                 a part of the logic
+│   ├── settings.rs                              the settings of tools.cfg: language, window size, crib file and the numbers of the calculation
+│   ├── store.rs                                 a part of the logic
+│   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
+├── tests/
+│   └── crib.rs                                  tests of the library and the command line
+├── docs/
+│   ├── architecture.json                        data of the Architecture picture
+│   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
 ├── images/                                      banner and the Architecture and Repository Structure pictures
 ├── .github/                                     CI and release workflows, issue and pull-request templates
@@ -165,7 +193,8 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
+└── tools.cfg.example                            every setting of tools.cfg with its default
 ```
 
 </details>
@@ -174,14 +203,15 @@ EH3D-TOOL-MANAGER/
 
 **Known limits today**
 
-* It has no window yet: only the library and the command line exist.
+* The window is written and its logic is tested, but it has not been built or looked at on a screen yet.
+* The window asks for the crib file and the CSV table as written paths (there is no file dialog yet).
 * It has not been tried on a machine nor with a collection of real files, and it has had no independent review.
 * The crib is a JSON file, not a database; the feeds and speeds are starting points taken from typical values and have not been checked on a machine; the programs of the suite do not read the crib yet.
 
 **Next**
 
 * Let DRILLPRO, ROUTEPRO and the CAM programs read the crib instead of their own tool tables, and add the 2D profile of each tool.
-* Add the window in the look shared by the programs of the suite, in the eight languages.
+* Look at the window on a screen of each system and adjust what is found.
 * Try it with real files and with the other programs of the suite.
 
 ## 🌍 Languages

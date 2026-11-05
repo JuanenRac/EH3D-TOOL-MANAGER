@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 71 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Es hat noch kein Fenster, wurde an keiner Maschine ausprobiert und nicht an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 115 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.5` |
 | Reifegrad | Gerüst |
-| Tests | 71 |
+| Tests | 115 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,9 +47,9 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-tools` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 71 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 115 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
-| Fenster | 🔴 | Geplant: das egui-Fenster, das die Suite gemeinsam nutzt; heute gibt es nur die Kommandozeile. |
+| Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-tools-gui`): eine Tabelle der Werkzeuge, die mit den Prüfungen der Kommandozeile hinzugefügt, geändert und entfernt werden, Filter und Suche, CSV-Import und -Export mit den Fehlern der Bibliothek und ein Rechner für Vorschübe und Drehzahlen, der seine Formeln und Bedingungen zeigt; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
 | Dokumentation | 🟡 | README in acht Sprachen, das Changelog und die zwei aus `docs/` gezeichneten Bilder. |
 
@@ -58,10 +58,11 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 * **Das Lager** (`src/model.rs`): Bohrer, Fräser, V-Fräser, Gravierstichel, Laser und Düsen mit Durchmesser, Schneiden, Länge, Spitzenwinkel und Schaft; jeder Wert wird geprüft, ein doppelter Name abgelehnt; jedes Werkzeug bekommt seine Nummer. Ein Verschleißzähler oder eine Schneidenzahl, die keine ganze Zahl ist, wird mit dem Namen des Feldes abgelehnt, in den Dateien und in der Befehlszeile.
 * **Der Verschleiß** (`src/model.rs`): Stunden, Meter und Bohrungen werden nach jedem Auftrag addiert; mit einem Limit für Stunden oder Bohrungen ist ein Werkzeug gut, bald zu wechseln (ab 90 %) oder zu wechseln, und `wear` listet die schlechtesten zuerst.
 * **Speicherung und Vorschübe und Drehzahlen** (`src/store.rs`, `src/csv.rs`, `src/calc.rs`): das Lager als JSON-Dokument oder CSV-Tabelle für eine Tabellenkalkulation, sorgfältig gelesen und mit der Zeile in jedem Fehler; Schnittgeschwindigkeit und Zahnvorschub für FR4, Aluminium, Acryl, Holz und Messing, begrenzt durch die Spindel.
+* **Das Fenster** (`src/window.rs`, `src/gui.rs`; `--features gui`, Programm `eh3d-tools-gui`): eine Werkzeugtabelle mit einem Formular zum Hinzufügen, Ändern und Entfernen mit denselben Prüfungen wie die Kommandozeile (die Nummer eines entfernten Werkzeugs wird nie wieder vergeben), Filtern und Suche, dem Einsatz eines Werkzeugs, der zu seinen Zählern addiert wird, CSV-Import und -Export mit den Fehlern der Bibliothek und einem Rechner, der die Formel und die Bedingungen jeder Zahl zeigt; die Zahlen, mit denen er arbeitet (Schnittgeschwindigkeiten, Zahnvorschübe, Faktoren), stehen in `tools.cfg` und lassen sich im Fenster ändern. Zustand, Aktionen, Einstellungen und Wörter sind einfacher Code mit Tests; das Zeichnen ist dünn. Geschrieben, noch nicht auf einem Bildschirm gesehen.
 
 ## 🧩 Rolle in EH3D
 
-EH3D-TOOL-MANAGER ist ein Programm der EH3D Fabrication Suite. Heute arbeitet es als Bibliothek und Kommandozeile; sein Fenster im gemeinsamen Aussehen der Suite ist geplant. Es liest und schreibt einfache Dateien und lässt sich allein oder zwischen den anderen Programmen nutzen.
+EH3D-TOOL-MANAGER ist ein Programm der EH3D Fabrication Suite. Es arbeitet als Bibliothek, als Kommandozeile und, mit dem Feature `gui` gebaut, als Fenster (`eh3d-tools-gui`) im gemeinsamen Aussehen der Suite. Es liest und schreibt einfache Dateien und lässt sich allein oder zwischen den anderen Programmen nutzen.
 
 ## 🏛️ Architektur
 
@@ -98,11 +99,17 @@ Die Bibliothek ist `eh3d_tool_manager` (`use eh3d_tool_manager::...`); die Komma
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  ein Teil der Logik
+│   ├── cli_args.rs                              die Argumente der Befehlszeile, streng gelesen
 │   ├── csv.rs                                   ein Teil der Logik
+│   ├── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   ├── gui_main.rs                              das Fenster als eigenes Programm, unter Windows ohne Konsole
+│   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── model.rs                                 ein Teil der Logik
-│   └── store.rs                                 ein Teil der Logik
+│   ├── settings.rs                              die Einstellungen aus tools.cfg: Sprache, Fenstergröße, Werkzeugdatei und die Zahlen der Berechnung
+│   ├── store.rs                                 ein Teil der Logik
+│   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner
 ├── tests/
 │   └── crib.rs                                  Tests von Bibliothek und Kommandozeile
 ├── docs/
@@ -116,30 +123,38 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          die festgelegte Rust-Toolchain
 ├── CHANGELOG.md                                 was sich in jeder Version geändert hat
 ├── SECURITY.md SUPPORT.md                       Schwachstellen melden und Fragen stellen
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+└── tools.cfg.example                            alle Einstellungen von tools.cfg mit ihrem Standardwert
 ```
 
 ## ⚙️ Konfiguration
 
-Es gibt noch keine Konfigurationsdatei: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-tools help`). Die festen Grenzen stehen als benannte Konstanten im Code und sind durch Tests abgedeckt.
+Die Konfigurationsdatei ist `tools.cfg` im Ordner des Programms (die Variable `EH3D_TOOLS_DIR`, unter Windows `%APPDATA%\eh3d-tools`, sonst `~/.config/eh3d-tools`), gelesen vom Fenster und vom Befehl `calc`: die Sprache und die Größe des Fensters, die Datei des Werkzeuglagers, die Spindeldrehzahl, mit der der Rechner startet, und jede Zahl, mit der Vorschübe und Drehzahlen berechnet werden (Schnittgeschwindigkeit und Zahnvorschub je Material sowie die Faktoren für das Eintauchen und die Zustelltiefe), sind Zeilen `Schlüssel = Wert`; ihre Grenzen werden geprüft und eine fehlerhafte Zeile wird im Fehler genannt. `tools.cfg.example` listet jeden Schlüssel mit Standardwert auf. Davon abgesehen: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-tools help`). Die Grenzen eines Werts sind benannte Konstanten im Code und durch Tests abgedeckt.
 
 ## 🚀 Schnellstart
 
-Sie brauchen eine stabile Rust-Toolchain (1.75 oder neuer).
+Sie brauchen eine stabile Rust-Toolchain (1.95 oder neuer).
 
 ```bash
 cargo build --release
 cargo test
 cargo run --release -- calc drill 0.8 fr4 24000
+# das Fenster (braucht das Feature gui)
+cargo build --release --features gui
+cargo run --release --features gui --bin eh3d-tools-gui
 ```
 
 ## 🧪 Tests
 
-Die Suite hat 71 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 115 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
 Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat ihren Eintrag in [CHANGELOG.md](CHANGELOG.md). `build.bat` / `build.sh` bauen das Programm, `test.bat` / `test.sh` führen die Tests aus und `run.bat` / `run.sh` starten es mit einem Beispiel. Releases erscheinen auf GitHub.
+
+### Downloads
+
+Jedes Release enthält das Kommandozeilenprogramm und das Fenster für Windows (64 und 32 Bit), Linux (64 Bit) und macOS (Apple Silicon und Intel) als `<Name>-<Version>-<System>.zip` (Windows) oder `.tar.gz` mit den beiden Programmen, der Lizenz, der Readme, dem Symbol und `tools.cfg.example`. Die Dateien werden von GitHub Actions gebaut und stehen in `SHA256SUMS`. Um einen Download zu prüfen, vergleichen Sie seinen Hash mit der danebenliegenden `.sha256`-Datei (`sha256sum -c`).
 
 ## 📂 Struktur des Repositorys
 
@@ -152,11 +167,24 @@ Die Version steht in `Cargo.toml` und in `eh3d.project.json`; jede Version hat i
 
 ```text
 EH3D-TOOL-MANAGER/
-├── crates/
-│   ├── eh3d-parser-gerber/                      Gerber-RS-274X-Leser
-│   ├── eh3d-parser-excellon/                    Leser für Excellon-Bohrdateien
-│   └── eh3d-parser-gcode/                       G-Code-Leser und modaler Interpreter
-├── docs/                                        READERS.md, was jeder Leser verspricht und was nicht, und die Daten der beiden Bilder
+├── src/
+│   ├── calc.rs                                  ein Teil der Logik
+│   ├── cli_args.rs                              die Argumente der Befehlszeile, streng gelesen
+│   ├── csv.rs                                   ein Teil der Logik
+│   ├── gui.rs                                   das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut
+│   ├── gui_main.rs                              das Fenster als eigenes Programm, unter Windows ohne Konsole
+│   ├── lang.rs                                  die Wörter des Fensters in den acht Sprachen
+│   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
+│   ├── main.rs                                  die Kommandozeile
+│   ├── model.rs                                 ein Teil der Logik
+│   ├── settings.rs                              die Einstellungen aus tools.cfg: Sprache, Fenstergröße, Werkzeugdatei und die Zahlen der Berechnung
+│   ├── store.rs                                 ein Teil der Logik
+│   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner
+├── tests/
+│   └── crib.rs                                  Tests von Bibliothek und Kommandozeile
+├── docs/
+│   ├── architecture.json                        Daten des Architektur-Bildes
+│   └── structure.json                           Daten des Struktur-Bildes
 ├── tools/                                       CI-Prüfung, README-Prüfung und die Bildwerkzeuge
 ├── images/                                      Banner und die Bilder von Architektur und Repository-Struktur
 ├── .github/                                     CI- und Release-Workflows, Vorlagen für Issues und Pull Requests
@@ -165,7 +193,8 @@ EH3D-TOOL-MANAGER/
 ├── rust-toolchain.toml                          die festgelegte Rust-Toolchain
 ├── CHANGELOG.md                                 was sich in jeder Version geändert hat
 ├── SECURITY.md SUPPORT.md                       Schwachstellen melden und Fragen stellen
-└── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
+└── tools.cfg.example                            alle Einstellungen von tools.cfg mit ihrem Standardwert
 ```
 
 </details>
@@ -174,14 +203,15 @@ EH3D-TOOL-MANAGER/
 
 **Bekannte Grenzen heute**
 
-* Es hat noch kein Fenster: nur Bibliothek und Kommandozeile existieren.
+* Das Fenster ist geschrieben und seine Logik getestet, wurde aber noch nicht gebaut oder auf einem Bildschirm angesehen.
+* Das Fenster verlangt die Werkzeugdatei und die CSV-Tabelle als geschriebene Pfade (noch ohne Dateidialog).
 * Es wurde weder an einer Maschine noch mit einer Sammlung echter Dateien erprobt und hatte keine unabhängige Prüfung.
 * Das Lager ist eine JSON-Datei, keine Datenbank; die Vorschübe und Drehzahlen sind Startwerte aus typischen Werten und an keiner Maschine geprüft; die Programme der Suite lesen das Lager noch nicht.
 
 **Als Nächstes**
 
 * DRILLPRO, ROUTEPRO und die CAM-Programme das Lager lesen lassen statt eigener Werkzeugtabellen und das 2D-Profil jedes Werkzeugs ergänzen.
-* Das Fenster im gemeinsamen Aussehen der Suite in den acht Sprachen ergänzen.
+* Das Fenster auf einem Bildschirm jedes Systems ansehen und das Gefundene anpassen.
 * Mit echten Dateien und den anderen Programmen der Suite ausprobieren.
 
 ## 🌍 Sprachen

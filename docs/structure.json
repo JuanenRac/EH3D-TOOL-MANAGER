@@ -3,6 +3,7 @@
   "ecosystem": "eh3d",
   "svg": "en",
   "exempt": [
+    "build.rs",
     "build.bat",
     "build.sh",
     "run.bat",
@@ -40,6 +41,19 @@
           }
         },
         {
+          "name": "cli_args.rs",
+          "desc": {
+            "en": "the arguments of the command line, read strictly",
+            "es": "los argumentos de la línea de órdenes, leídos con rigor",
+            "de": "die Argumente der Befehlszeile, streng gelesen",
+            "fr": "les arguments de la ligne de commande, lus strictement",
+            "it": "gli argomenti della riga di comando, letti con rigore",
+            "ja": "コマンドライン引数（厳密に解釈）",
+            "zh": "命令行参数（严格解析）",
+            "pt": "os argumentos da linha de comandos, lidos com rigor"
+          }
+        },
+        {
           "name": "csv.rs",
           "desc": {
             "en": "a part of the logic",
@@ -50,6 +64,45 @@
             "ja": "ロジックの一部",
             "zh": "逻辑的一部分",
             "pt": "uma parte da lógica"
+          }
+        },
+        {
+          "name": "gui.rs",
+          "desc": {
+            "en": "the window (egui, with the gui feature): draws the state and passes on what the person does",
+            "es": "la ventana (egui, con la característica gui): dibuja el estado y transmite lo que hace la persona",
+            "de": "das Fenster (egui, mit dem Feature gui): zeichnet den Zustand und gibt weiter, was die Person tut",
+            "fr": "la fenêtre (egui, avec la fonctionnalité gui) : dessine l'état et transmet ce que fait la personne",
+            "it": "la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona",
+            "ja": "ウィンドウ（egui、gui 機能）：状態を描き、操作を伝える",
+            "zh": "窗口（egui，gui 特性）：绘制状态并传递用户的操作",
+            "pt": "a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz"
+          }
+        },
+        {
+          "name": "gui_main.rs",
+          "desc": {
+            "en": "the window as a program of its own, without a console on Windows",
+            "es": "la ventana como programa propio, sin consola en Windows",
+            "de": "das Fenster als eigenes Programm, unter Windows ohne Konsole",
+            "fr": "la fenêtre comme programme à part, sans console sous Windows",
+            "it": "la finestra come programma a sé, senza console su Windows",
+            "ja": "独立したウィンドウ用プログラム（Windows ではコンソールなし）",
+            "zh": "作为独立程序的窗口，在 Windows 上没有控制台",
+            "pt": "a janela como programa à parte, sem consola no Windows"
+          }
+        },
+        {
+          "name": "lang.rs",
+          "desc": {
+            "en": "the words of the window in the eight languages",
+            "es": "las palabras de la ventana en los ocho idiomas",
+            "de": "die Wörter des Fensters in den acht Sprachen",
+            "fr": "les mots de la fenêtre dans les huit langues",
+            "it": "le parole della finestra nelle otto lingue",
+            "ja": "ウィンドウの文言（8言語）",
+            "zh": "窗口的文字（八种语言）",
+            "pt": "as palavras da janela nos oito idiomas"
           }
         },
         {
@@ -92,6 +145,19 @@
           }
         },
         {
+          "name": "settings.rs",
+          "desc": {
+            "en": "the settings of tools.cfg: language, window size, crib file and the numbers of the calculation",
+            "es": "los ajustes de tools.cfg: idioma, tamaño de la ventana, fichero del almacén y los números del cálculo",
+            "de": "die Einstellungen aus tools.cfg: Sprache, Fenstergröße, Werkzeugdatei und die Zahlen der Berechnung",
+            "fr": "les réglages de tools.cfg : langue, taille de la fenêtre, fichier de l'outillage et nombres du calcul",
+            "it": "le impostazioni di tools.cfg: lingua, dimensione della finestra, file del magazzino e numeri del calcolo",
+            "ja": "tools.cfg の設定：言語、ウィンドウサイズ、工具庫ファイル、計算に使う数値",
+            "zh": "tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值",
+            "pt": "as definições de tools.cfg: idioma, tamanho da janela, ficheiro do armazém e os números do cálculo"
+          }
+        },
+        {
           "name": "store.rs",
           "desc": {
             "en": "a part of the logic",
@@ -102,6 +168,19 @@
             "ja": "ロジックの一部",
             "zh": "逻辑的一部分",
             "pt": "uma parte da lógica"
+          }
+        },
+        {
+          "name": "window.rs",
+          "desc": {
+            "en": "the state of the window, no screen needed: the crib, the form, the filters and the calculator",
+            "es": "el estado de la ventana sin pantalla: el almacén, el formulario, los filtros y la calculadora",
+            "de": "der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner",
+            "fr": "l'état de la fenêtre sans écran : l'outillage, le formulaire, les filtres et le calculateur",
+            "it": "lo stato della finestra senza schermo: il magazzino, il modulo, i filtri e il calcolatore",
+            "ja": "画面なしのウィンドウの状態：工具庫、フォーム、フィルター、計算機",
+            "zh": "无需屏幕的窗口状态：刀具库、表单、筛选和计算器",
+            "pt": "o estado da janela sem ecrã: o armazém, o formulário, os filtros e a calculadora"
           }
         }
       ]
@@ -292,6 +371,19 @@
             "ja": "貢献方法、行動規範、ライセンス",
             "zh": "参与贡献、行为准则和许可证",
             "pt": "como contribuir, o código de conduta e a licença"
+          }
+        },
+        {
+          "name": "tools.cfg.example",
+          "desc": {
+            "en": "every setting of tools.cfg with its default",
+            "es": "todos los ajustes de tools.cfg con su valor por defecto",
+            "de": "alle Einstellungen von tools.cfg mit ihrem Standardwert",
+            "fr": "tous les réglages de tools.cfg avec leur valeur par défaut",
+            "it": "tutte le impostazioni di tools.cfg con il valore predefinito",
+            "ja": "tools.cfg のすべての設定と既定値",
+            "zh": "tools.cfg 的所有设置及其默认值",
+            "pt": "todas as definições de tools.cfg com o valor predefinido"
           }
         }
       ]
