@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+## [0.0.5] - Stricter CSV, numbers that are never given twice and the shared validation job
+
 - **The picture of the architecture counts the tests the repository has:** its legend said 34 and the suite has 71.
 - **The validation job is the shared one of the documentation hub:** the checks of the manifest, the documents and the pictures run through the reusable workflow, fixed to a full commit of EH3D-DOCS whose actions are pinned by commit.
 - **A number that was given is not given again:** the crib keeps `next_id`, so removing the last tool and adding another does not reuse its number; an id that is not a whole positive number is told as such.
