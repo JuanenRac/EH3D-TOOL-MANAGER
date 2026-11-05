@@ -405,3 +405,38 @@ fn a_text_that_a_spreadsheet_would_run_as_a_formula_is_written_as_text_and_read_
     }
     assert_eq!(from_csv(&text).unwrap(), c);
 }
+
+#[test]
+fn a_tool_is_replaced_by_its_number_with_the_checks_of_add() {
+    let mut c = Crib::default();
+    let a = c.add(drill("a")).unwrap();
+    let b = c.add(drill("b")).unwrap();
+    let mut t = c.get(b).unwrap().clone();
+    t.name = "A".into();
+    assert!(c.update(t.clone()).unwrap_err().contains("already"));
+    t.name = "renamed".into();
+    t.diameter_mm = 1.5;
+    c.update(t).unwrap();
+    assert_eq!(c.get(b).unwrap().name, "renamed");
+    assert_eq!(c.tools.len(), 2);
+    assert_eq!(c.next_id, 3);
+    // the same name in other letters is allowed for the tool that has it
+    let mut own = c.get(a).unwrap().clone();
+    own.name = "A".into();
+    c.update(own).unwrap();
+    assert_eq!(c.get(a).unwrap().name, "A");
+    let mut ghost = drill("ghost");
+    ghost.id = 99;
+    assert!(c.update(ghost).unwrap_err().contains("no tool 99"));
+    let mut bad = c.get(a).unwrap().clone();
+    bad.diameter_mm = -1.0;
+    assert!(c.update(bad).unwrap_err().contains("diameter_mm"));
+    assert_eq!(c.get(a).unwrap().diameter_mm, 0.8);
+}
+
+#[test]
+fn the_fraction_of_the_wear_puts_the_tools_in_order() {
+    assert_eq!(Wear::Good(0.25).fraction(), 0.25);
+    assert_eq!(Wear::Soon(0.95).fraction(), 0.95);
+    assert!(Wear::Replace.fraction() > 1.0e300);
+}

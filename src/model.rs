@@ -160,6 +160,13 @@ pub enum Wear {
     Replace,
 }
 
+impl Wear {
+    /// The fraction of the limits that is used (1 or more when a limit was reached); a tool to replace counts as the largest number, to put it after the others.
+    pub fn fraction(self) -> f64 {
+        rank(&self)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Crib {
     pub tools: Vec<Tool>,
@@ -188,6 +195,25 @@ impl Crib {
         self.next_id = id.saturating_add(1);
         self.tools.push(tool);
         Ok(id)
+    }
+
+    /// Replaces the tool that has the number of `tool`: the same checks as `add`, and the number and the counter of numbers stay as they are.
+    pub fn update(&mut self, tool: Tool) -> Result<(), String> {
+        tool.validate()?;
+        let at = self
+            .tools
+            .iter()
+            .position(|t| t.id == tool.id)
+            .ok_or_else(|| format!("there is no tool {}", tool.id))?;
+        if self
+            .tools
+            .iter()
+            .any(|t| t.id != tool.id && t.name.eq_ignore_ascii_case(&tool.name))
+        {
+            return Err(format!("there is a tool called '{}' already", tool.name));
+        }
+        self.tools[at] = tool;
+        Ok(())
     }
 
     pub fn get(&self, id: u32) -> Option<&Tool> {
