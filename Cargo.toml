@@ -2,7 +2,7 @@
 name = "eh3d-tool-manager"
 version = "0.0.5"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.95"
 description = "The tool crib of the EH3D Fabrication Suite: tools, wear counters, feeds and speeds, JSON and CSV"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/JuanenRac/EH3D-TOOL-MANAGER"
@@ -16,9 +16,32 @@ path = "src/lib.rs"
 name = "eh3d-tools"
 path = "src/main.rs"
 
+# the window as a program of its own: on Windows it opens without the black console window that the command line keeps
+[[bin]]
+name = "eh3d-tools-gui"
+path = "src/gui_main.rs"
+required-features = ["gui"]
+
+[features]
+default = []
+# the window (egui, with the icon of the program): `cargo run --release --features gui --bin eh3d-tools-gui`
+gui = ["dep:eframe", "dep:png"]
+
 [dependencies]
 serde_json = "1"
+
+# the window
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }
+png = { version = "0.17", optional = true }
+
+# the window of Linux needs a windowing system chosen at build time (X11 and Wayland); Windows and macOS have their own
+[target.'cfg(target_os = "linux")'.dependencies]
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"], optional = true }
 
 [profile.release]
 opt-level = 3
 lto = true
+
+# the icon and the version information of the Windows executable (build.rs; nothing on other systems)
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1.34"
