@@ -158,6 +158,19 @@
           }
         },
         {
+          "name": "shot.rs",
+          "desc": {
+            "en": "the picture mode of the window (--shot): its arguments, read and checked without a screen",
+            "es": "el modo de captura de la ventana (--shot): sus argumentos, leídos y comprobados sin pantalla",
+            "de": "der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft",
+            "fr": "le mode capture de la fenêtre (--shot) : ses arguments, lus et vérifiés sans écran",
+            "it": "la modalità immagine della finestra (--shot): i suoi argomenti, letti e verificati senza schermo",
+            "ja": "ウィンドウの画像モード（--shot）：画面なしで読み取り・検証される引数",
+            "zh": "窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数",
+            "pt": "o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã"
+          }
+        },
+        {
           "name": "store.rs",
           "desc": {
             "en": "a part of the logic",
@@ -204,6 +217,19 @@
           }
         },
         {
+          "name": "shot_sample.rs",
+          "desc": {
+            "en": "tests of the sample crib and of the window of a picture",
+            "es": "pruebas del cajón de muestra y de la ventana de una captura",
+            "de": "Tests der Beispiel-Werkzeugkiste und des Fensters eines Bildes",
+            "fr": "tests de la boîte à outils d'exemple et de la fenêtre d'une capture",
+            "it": "test della cassetta di esempio e della finestra di un'immagine",
+            "ja": "サンプルの工具一覧と画像用ウィンドウのテスト",
+            "zh": "示例刀具库和截图窗口的测试",
+            "pt": "testes da caixa de ferramentas de exemplo e da janela de uma captura"
+          }
+        },
+        {
           "name": "vbit.rs",
           "desc": {
             "en": "tests of the width of the cut of a V-bit: the command, the depth in calc and the settings",
@@ -214,6 +240,26 @@
             "ja": "Vビットの切削幅のテスト：コマンド、calc の深さ、設定",
             "zh": "V 形刀切削宽度的测试：命令、calc 中的深度和设置",
             "pt": "testes da largura do corte de uma fresa em V: o comando, a profundidade em calc e as definições"
+          }
+        }
+      ]
+    },
+    {
+      "name": "examples/",
+      "span": 3,
+      "accent": "d",
+      "rows": [
+        {
+          "name": "crib.json",
+          "desc": {
+            "en": "a sample to try the program with",
+            "es": "una muestra para probar el programa",
+            "de": "ein Beispiel zum Ausprobieren",
+            "fr": "un exemple pour essayer le programme",
+            "it": "un esempio per provare il programma",
+            "ja": "試すためのサンプル",
+            "zh": "试用的示例",
+            "pt": "um exemplo para experimentar o programa"
           }
         }
       ]

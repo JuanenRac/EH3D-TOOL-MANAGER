@@ -591,6 +591,43 @@ impl Window {
         w
     }
 
+    /// The window of a picture: the default settings and a crib that is only in memory, so that nothing of the person's files is read or changed. `crib` is a crib file to show
+    /// (`None` shows an empty one); its path stays as it was given.
+    pub fn for_shot(crib: Option<PathBuf>, lang: Lang) -> Window {
+        let settings = Settings::default();
+        let file = crib
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(DEFAULT_CRIB_FILE));
+        let mut w = Window {
+            lang,
+            tab: Tab::Tools,
+            crib: Crib::default(),
+            file_text: file.display().to_string(),
+            csv_text: DEFAULT_CSV_FILE.to_string(),
+            overwrite_csv: false,
+            dirty: false,
+            backup_pending: false,
+            search: String::new(),
+            kind_filter: None,
+            wear_filter: WearFilter::All,
+            sort: SortKey::Id,
+            descending: false,
+            draft: Draft::default(),
+            selected: None,
+            use_hours: "0".into(),
+            use_meters: "0".into(),
+            use_holes: "0".into(),
+            calc: CalcState::new(&settings),
+            status: Status::Ready,
+            data_dir: PathBuf::from("."),
+            settings,
+        };
+        if crib.is_some() {
+            w.open();
+        }
+        w
+    }
+
     fn file_path(&self) -> Option<PathBuf> {
         let t = self.file_text.trim();
         if t.is_empty() {

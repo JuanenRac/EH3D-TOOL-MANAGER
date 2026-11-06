@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-tools`），有 126 个在电脑上运行的测试：管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速。窗口（`eh3d-tools-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
+**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-tools`），有 138 个在电脑上运行的测试：管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速。窗口（`eh3d-tools-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.0.6` |
 | 成熟度 | 脚手架 |
-| 测试 | 126 |
+| 测试 | 138 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -47,7 +47,7 @@
 |---|---|---|
 | 核心 | 🟡 | 管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速；已在电脑上用正常和损坏的输入测试，未用大量真实文件验证。 |
 | 命令行 | 🟡 | `eh3d-tools` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 126 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
+| 测试 | 🟡 | 138 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`，程序 `eh3d-tools-gui`）：一个可用与命令行相同的检查添加、修改和移除刀具的表格、筛选和搜索、带库错误信息的 CSV 导入导出，以及显示公式和条件的进给与转速计算器；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -109,11 +109,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  命令行
 │   ├── model.rs                                 逻辑的一部分
 │   ├── settings.rs                              tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值
+│   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   ├── store.rs                                 逻辑的一部分
 │   └── window.rs                                无需屏幕的窗口状态：刀具库、表单、筛选和计算器
 ├── tests/
 │   ├── crib.rs                                  库和命令行的测试
+│   ├── shot_sample.rs                           示例刀具库和截图窗口的测试
 │   └── vbit.rs                                  V 形刀切削宽度的测试：命令、calc 中的深度和设置
+├── examples/
+│   └── crib.json                                试用的示例
 ├── docs/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据
@@ -144,11 +148,14 @@ cargo run --release -- calc drill 0.8 fr4 24000
 # 窗口（需要 gui 特性）
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-tools-gui
+cargo run --release --features gui --bin eh3d-tools-gui -- --shot screen.png --open examples/crib.json   # a picture of the window
 ```
+
+要在不手动打开窗口的情况下截取窗口图像，请使用 `--shot FILE.png` 运行（还可用 `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`）：它按该尺寸打开，保存 PNG，不保留任何设置并自动关闭（写入文件成功时退出码为 0，否则为 1，参数错误时为 2）。
 
 ## 🧪 测试
 
-测试套件有 126 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
+测试套件有 138 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -180,11 +187,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  命令行
 │   ├── model.rs                                 逻辑的一部分
 │   ├── settings.rs                              tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值
+│   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   ├── store.rs                                 逻辑的一部分
 │   └── window.rs                                无需屏幕的窗口状态：刀具库、表单、筛选和计算器
 ├── tests/
 │   ├── crib.rs                                  库和命令行的测试
+│   ├── shot_sample.rs                           示例刀具库和截图窗口的测试
 │   └── vbit.rs                                  V 形刀切削宽度的测试：命令、calc 中的深度和设置
+├── examples/
+│   └── crib.json                                试用的示例
 ├── docs/
 │   ├── architecture.json                        架构图数据
 │   └── structure.json                           结构图数据

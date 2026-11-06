@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 126 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 138 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.6` |
 | Maturidade | Estrutura inicial |
-| Testes | 126 |
+| Testes | 138 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -47,7 +47,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 |---|---|---|
 | Núcleo | 🟡 | guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material; testado num computador com entradas normais e danificadas, não com uma coleção de ficheiros reais. |
 | Linha de comandos | 🟡 | `eh3d-tools` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 126 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 138 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-tools-gui`): uma tabela das ferramentas que se adicionam, alteram e removem com as verificações da linha de comandos, filtros e pesquisa, importação e exportação de CSV com os erros da biblioteca e uma calculadora de avanços e velocidades que mostra as suas fórmulas e condições; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -109,11 +109,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  a linha de comandos
 │   ├── model.rs                                 uma parte da lógica
 │   ├── settings.rs                              as definições de tools.cfg: idioma, tamanho da janela, ficheiro do armazém e os números do cálculo
+│   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
 │   ├── store.rs                                 uma parte da lógica
 │   └── window.rs                                o estado da janela sem ecrã: o armazém, o formulário, os filtros e a calculadora
 ├── tests/
 │   ├── crib.rs                                  testes da biblioteca e da linha de comandos
+│   ├── shot_sample.rs                           testes da caixa de ferramentas de exemplo e da janela de uma captura
 │   └── vbit.rs                                  testes da largura do corte de uma fresa em V: o comando, a profundidade em calc e as definições
+├── examples/
+│   └── crib.json                                um exemplo para experimentar o programa
 ├── docs/
 │   ├── architecture.json                        dados da imagem de Arquitetura
 │   └── structure.json                           dados da imagem de Estrutura
@@ -144,11 +148,14 @@ cargo run --release -- calc drill 0.8 fr4 24000
 # a janela (precisa da funcionalidade gui)
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-tools-gui
+cargo run --release --features gui --bin eh3d-tools-gui -- --shot screen.png --open examples/crib.json   # a picture of the window
 ```
+
+Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICHEIRO.png` (também `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): abre-se com esse tamanho, guarda o PNG, não guarda definições e fecha-se sozinho (código de saída 0 se o ficheiro foi escrito, 1 se não, 2 se os argumentos estiverem errados).
 
 ## 🧪 Testes
 
-O conjunto tem 126 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 138 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 
@@ -180,11 +187,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  a linha de comandos
 │   ├── model.rs                                 uma parte da lógica
 │   ├── settings.rs                              as definições de tools.cfg: idioma, tamanho da janela, ficheiro do armazém e os números do cálculo
+│   ├── shot.rs                                  o modo de captura da janela (--shot): os seus argumentos, lidos e verificados sem ecrã
 │   ├── store.rs                                 uma parte da lógica
 │   └── window.rs                                o estado da janela sem ecrã: o armazém, o formulário, os filtros e a calculadora
 ├── tests/
 │   ├── crib.rs                                  testes da biblioteca e da linha de comandos
+│   ├── shot_sample.rs                           testes da caixa de ferramentas de exemplo e da janela de uma captura
 │   └── vbit.rs                                  testes da largura do corte de uma fresa em V: o comando, a profundidade em calc e as definições
+├── examples/
+│   └── crib.json                                um exemplo para experimentar o programa
 ├── docs/
 │   ├── architecture.json                        dados da imagem de Arquitetura
 │   └── structure.json                           dados da imagem de Estrutura

@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 126 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 138 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Maturity | Scaffolding |
-| Tests | 126 |
+| Tests | 138 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 126 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 138 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-tools-gui`): a table of the tools that are added, changed and removed with the checks of the command line, filters and search, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows its formulas and conditions; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -109,11 +109,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  the command line
 │   ├── model.rs                                 a part of the logic
 │   ├── settings.rs                              the settings of tools.cfg: language, window size, crib file and the numbers of the calculation
+│   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   ├── store.rs                                 a part of the logic
 │   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
 ├── tests/
 │   ├── crib.rs                                  tests of the library and the command line
+│   ├── shot_sample.rs                           tests of the sample crib and of the window of a picture
 │   └── vbit.rs                                  tests of the width of the cut of a V-bit: the command, the depth in calc and the settings
+├── examples/
+│   └── crib.json                                a sample to try the program with
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture
@@ -144,11 +148,14 @@ cargo run --release -- calc drill 0.8 fr4 24000
 # the window (needs the gui feature)
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-tools-gui
+cargo run --release --features gui --bin eh3d-tools-gui -- --shot screen.png --open examples/crib.json   # a picture of the window
 ```
+
+To take a picture of the window without opening it by hand, run it with `--shot FILE.png` (also `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`): it opens at that size, saves the PNG, keeps no settings and closes by itself (exit code 0 when the file was written, 1 when it was not, 2 for wrong arguments).
 
 ## 🧪 Testing
 
-The suite has 126 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 138 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -180,11 +187,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  the command line
 │   ├── model.rs                                 a part of the logic
 │   ├── settings.rs                              the settings of tools.cfg: language, window size, crib file and the numbers of the calculation
+│   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   ├── store.rs                                 a part of the logic
 │   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
 ├── tests/
 │   ├── crib.rs                                  tests of the library and the command line
+│   ├── shot_sample.rs                           tests of the sample crib and of the window of a picture
 │   └── vbit.rs                                  tests of the width of the cut of a V-bit: the command, the depth in calc and the settings
+├── examples/
+│   └── crib.json                                a sample to try the program with
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
 │   └── structure.json                           data of the Repository Structure picture

@@ -11,5 +11,6 @@ pub mod gui;
 pub mod lang;
 pub mod model;
 pub mod settings;
+pub mod shot;
 pub mod store;
 pub mod window;

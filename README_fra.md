@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-tools`) avec 126 tests exécutés sur un ordinateur : garde les outils avec leur géométrie et leur usure, les stocke en JSON ou CSV et calcule des avances et vitesses de départ par matériau. Une fenêtre (`eh3d-tools-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-tools`) avec 138 tests exécutés sur un ordinateur : garde les outils avec leur géométrie et leur usure, les stocke en JSON ou CSV et calcule des avances et vitesses de départ par matériau. Une fenêtre (`eh3d-tools-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Maturité | Échafaudage |
-| Tests | 126 |
+| Tests | 138 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,7 +47,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | garde les outils avec leur géométrie et leur usure, les stocke en JSON ou CSV et calcule des avances et vitesses de départ par matériau ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Ligne de commande | 🟡 | `eh3d-tools` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 126 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 138 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`, programme `eh3d-tools-gui`) : un tableau des outils que l'on ajoute, modifie et retire avec les vérifications de la ligne de commande, des filtres et une recherche, l'import et l'export CSV avec les erreurs de la bibliothèque et un calculateur d'avances et de vitesses qui montre ses formules et ses conditions ; sa logique est testée, mais elle n'a pas encore été compilée ni regardée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -109,11 +109,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  la ligne de commande
 │   ├── model.rs                                 une partie de la logique
 │   ├── settings.rs                              les réglages de tools.cfg : langue, taille de la fenêtre, fichier de l'outillage et nombres du calcul
+│   ├── shot.rs                                  le mode capture de la fenêtre (--shot) : ses arguments, lus et vérifiés sans écran
 │   ├── store.rs                                 une partie de la logique
 │   └── window.rs                                l'état de la fenêtre sans écran : l'outillage, le formulaire, les filtres et le calculateur
 ├── tests/
 │   ├── crib.rs                                  tests de la bibliothèque et de la ligne de commande
+│   ├── shot_sample.rs                           tests de la boîte à outils d'exemple et de la fenêtre d'une capture
 │   └── vbit.rs                                  tests de la largeur de coupe d'une fraise en V : la commande, la profondeur dans calc et les réglages
+├── examples/
+│   └── crib.json                                un exemple pour essayer le programme
 ├── docs/
 │   ├── architecture.json                        données de l'image d'Architecture
 │   └── structure.json                           données de l'image de Structure
@@ -144,11 +148,14 @@ cargo run --release -- calc drill 0.8 fr4 24000
 # la fenêtre (demande la fonctionnalité gui)
 cargo build --release --features gui
 cargo run --release --features gui --bin eh3d-tools-gui
+cargo run --release --features gui --bin eh3d-tools-gui -- --shot screen.png --open examples/crib.json   # a picture of the window
 ```
+
+Pour prendre une capture de la fenêtre sans l'ouvrir à la main, lancez-la avec `--shot FICHIER.png` (aussi `--size WxH`, `--theme forge|dark|light`, `--wait N`, `--lang CODE`, `--open FILE`, `--replace`) : elle s'ouvre à cette taille, enregistre le PNG, ne garde aucun réglage et se ferme toute seule (code de sortie 0 si le fichier a été écrit, 1 sinon, 2 si les arguments sont erronés).
 
 ## 🧪 Tests
 
-La suite compte 126 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 138 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -180,11 +187,15 @@ EH3D-TOOL-MANAGER/
 │   ├── main.rs                                  la ligne de commande
 │   ├── model.rs                                 une partie de la logique
 │   ├── settings.rs                              les réglages de tools.cfg : langue, taille de la fenêtre, fichier de l'outillage et nombres du calcul
+│   ├── shot.rs                                  le mode capture de la fenêtre (--shot) : ses arguments, lus et vérifiés sans écran
 │   ├── store.rs                                 une partie de la logique
 │   └── window.rs                                l'état de la fenêtre sans écran : l'outillage, le formulaire, les filtres et le calculateur
 ├── tests/
 │   ├── crib.rs                                  tests de la bibliothèque et de la ligne de commande
+│   ├── shot_sample.rs                           tests de la boîte à outils d'exemple et de la fenêtre d'une capture
 │   └── vbit.rs                                  tests de la largeur de coupe d'une fraise en V : la commande, la profondeur dans calc et les réglages
+├── examples/
+│   └── crib.json                                un exemple pour essayer le programme
 ├── docs/
 │   ├── architecture.json                        données de l'image d'Architecture
 │   └── structure.json                           données de l'image de Structure
