@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.7] - Picture mode for the window and a sample drawer of tools
+
 - **The width of the cut of a V-bit by its angle:** `v_bit_width_mm` works out `2 x depth x tan(angle / 2) + flat` (a 60 degree bit at 0.5 mm: 0.5774 mm plus the flat of 0.1 mm = 0.6774 mm), with the angle from 10 to 170 degrees, the depth from 0 to 100 mm and the flat from 0 to 5 mm; every value out of its range is an error that names it. The command `eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]` prints it.
 - **Two new keys in `tools.cfg`:** `v_bit_angle_deg` (60 by default, 10 to 170) and `v_bit_flat_mm` (0.1 by default, 0 to 5), checked with the number of their line; they are the angle and the flat that `vbit` uses when the options are not given, and the flat of every width. `tools.cfg.example` lists them.
 - **The feeds and speeds of a V-bit or an engraver at a depth:** `calc ... --depth MM` (and `feeds_speeds_traced_at` in the library) works the speed and the feed with the width of the cut at that depth as the diameter (at most the diameter of the tool, never under 0.01 mm), using the angle of the tool; a depth for another kind of tool is an error. Without a depth the numbers are the same as before.
