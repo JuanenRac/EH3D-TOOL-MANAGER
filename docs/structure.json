@@ -202,6 +202,19 @@
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
           }
+        },
+        {
+          "name": "vbit.rs",
+          "desc": {
+            "en": "tests of the width of the cut of a V-bit: the command, the depth in calc and the settings",
+            "es": "pruebas del ancho del corte de una fresa en V: la orden, la profundidad en calc y los ajustes",
+            "de": "Tests der Schnittbreite eines V-Fräsers: der Befehl, die Tiefe in calc und die Einstellungen",
+            "fr": "tests de la largeur de coupe d'une fraise en V : la commande, la profondeur dans calc et les réglages",
+            "it": "test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni",
+            "ja": "Vビットの切削幅のテスト：コマンド、calc の深さ、設定",
+            "zh": "V 形刀切削宽度的测试：命令、calc 中的深度和设置",
+            "pt": "testes da largura do corte de uma fresa em V: o comando, a profundidade em calc e as definições"
+          }
         }
       ]
     },

@@ -4,7 +4,8 @@
 
 use crate::calc::{
     CalcParams, Material, CHIP_FRACTION_LIMITS, DRILL_PLUNGE_LIMITS, MAX_PASS_LIMITS,
-    PASS_FRACTION_LIMITS, PLUNGE_RATIO_LIMITS, SURFACE_SPEED_LIMITS, WORKING_LIMITS,
+    PASS_FRACTION_LIMITS, PLUNGE_RATIO_LIMITS, SURFACE_SPEED_LIMITS, V_BIT_ANGLE_LIMITS,
+    V_BIT_FLAT_LIMITS, WORKING_LIMITS,
 };
 use crate::lang::Lang;
 use std::path::{Path, PathBuf};
@@ -149,6 +150,10 @@ impl Settings {
                     p.pass_fraction = float(line, key, value, PASS_FRACTION_LIMITS)?;
                 }
                 "max_pass_mm" => p.max_pass_mm = float(line, key, value, MAX_PASS_LIMITS)?,
+                "v_bit_angle_deg" => {
+                    p.v_bit_angle_deg = float(line, key, value, V_BIT_ANGLE_LIMITS)?;
+                }
+                "v_bit_flat_mm" => p.v_bit_flat_mm = float(line, key, value, V_BIT_FLAT_LIMITS)?,
                 _ => {
                     if let Some(name) = key.strip_prefix("surface_speed_") {
                         let m = material(line, key, name)?;
@@ -219,6 +224,11 @@ mod tests {
             ("surface_speed_steel = 100", "surface_speed_steel"),
             ("drill_plunge = -1", "drill_plunge"),
             ("max_pass_mm = 1000", "max_pass_mm"),
+            ("v_bit_angle_deg = 5", "v_bit_angle_deg"),
+            ("v_bit_angle_deg = 171", "v_bit_angle_deg"),
+            ("v_bit_angle_deg = sharp", "v_bit_angle_deg"),
+            ("v_bit_flat_mm = -0.1", "v_bit_flat_mm"),
+            ("v_bit_flat_mm = 6", "v_bit_flat_mm"),
         ] {
             let e = Settings::parse(text).unwrap_err();
             assert!(e.contains(key) && e.contains("line"), "{e}");
@@ -246,5 +256,42 @@ mod tests {
         std::fs::write(dir.join(CONFIG_FILE), "default_max_rpm = 18000\n").unwrap();
         assert_eq!(Settings::load(&dir).unwrap().default_max_rpm, 18000.0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_angle_and_the_flat_of_the_v_bit_are_read_and_have_the_defaults_without_them() {
+        let d = Settings::parse("").unwrap().params;
+        assert_eq!((d.v_bit_angle_deg, d.v_bit_flat_mm), (60.0, 0.1));
+        let s = Settings::parse(
+            "v_bit_angle_deg = 90
+v_bit_flat_mm = 0.05
+",
+        )
+        .unwrap();
+        assert_eq!(
+            (s.params.v_bit_angle_deg, s.params.v_bit_flat_mm),
+            (90.0, 0.05)
+        );
+        // the limits are the ones of the library, both ends included
+        assert!(Settings::parse(
+            "v_bit_angle_deg = 10
+v_bit_flat_mm = 0"
+        )
+        .is_ok());
+        assert!(Settings::parse(
+            "v_bit_angle_deg = 170
+v_bit_flat_mm = 5"
+        )
+        .is_ok());
+        let e = Settings::parse(
+            "
+
+v_bit_angle_deg = 175",
+        )
+        .unwrap_err();
+        assert!(
+            e.contains("line 3") && e.contains("10") && e.contains("170"),
+            "{e}"
+        );
     }
 }

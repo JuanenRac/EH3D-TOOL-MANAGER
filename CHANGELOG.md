@@ -4,6 +4,11 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The width of the cut of a V-bit by its angle:** `v_bit_width_mm` works out `2 x depth x tan(angle / 2) + flat` (a 60 degree bit at 0.5 mm: 0.5774 mm plus the flat of 0.1 mm = 0.6774 mm), with the angle from 10 to 170 degrees, the depth from 0 to 100 mm and the flat from 0 to 5 mm; every value out of its range is an error that names it. The command `eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]` prints it.
+- **Two new keys in `tools.cfg`:** `v_bit_angle_deg` (60 by default, 10 to 170) and `v_bit_flat_mm` (0.1 by default, 0 to 5), checked with the number of their line; they are the angle and the flat that `vbit` uses when the options are not given, and the flat of every width. `tools.cfg.example` lists them.
+- **The feeds and speeds of a V-bit or an engraver at a depth:** `calc ... --depth MM` (and `feeds_speeds_traced_at` in the library) works the speed and the feed with the width of the cut at that depth as the diameter (at most the diameter of the tool, never under 0.01 mm), using the angle of the tool; a depth for another kind of tool is an error. Without a depth the numbers are the same as before.
+- **The window shows the width of the cut:** the calculator has a field for the depth, shows the width of the cut in the result and the formula with its numbers in the eight languages, and the numbers of the calculation include the angle and the flat.
+
 ## [0.0.6] - The window with the tool table, the feeds and speeds calculator and its configuration file
 
 - **A window:** built with the `gui` feature (egui, the look the other programs of the suite share), program `eh3d-tools-gui`, which opens without a console on Windows. A table of the tools with filters (a search, the kind, the wear) and a sort, a form to add, change and remove a tool with the same checks and numbers as the command line (the number of a removed tool is never given again), the use of a job added to the counters of a tool, the crib file opened and saved, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows the formula of every number and the conditions that applied, with the numbers it works with editable. All of it in the eight languages; the state and the actions live in a module with tests and the screen only draws them.

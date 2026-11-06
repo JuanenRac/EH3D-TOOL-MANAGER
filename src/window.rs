@@ -2,7 +2,7 @@
 //! `gui` feature) only draws this and passes on what the person does, so everything here is tested as plain code. Every check is the one the command line makes (the same functions
 //! of the library) and an error is the message of the library.
 
-use crate::calc::{feeds_speeds_traced, CalcParams, Cut, Material, Trace};
+use crate::calc::{feeds_speeds_traced_at, CalcParams, Cut, Material, Trace};
 use crate::lang::{fill, Lang, Msg};
 use crate::model::{Crib, Kind, Tool, Wear};
 use crate::settings::Settings;
@@ -360,6 +360,8 @@ pub struct CalcState {
     pub diameter_mm: String,
     pub flutes: String,
     pub tip_angle_deg: String,
+    /// The depth a V-bit or an engraver cuts to, as a text; blank for none.
+    pub depth_mm: String,
     pub material: Material,
     pub max_rpm: String,
     pub params: CalcParams,
@@ -381,6 +383,7 @@ impl CalcState {
             diameter_mm: "0.8".into(),
             flutes: "2".into(),
             tip_angle_deg: String::new(),
+            depth_mm: String::new(),
             material: Material::Fr4,
             max_rpm: fmt_num(settings.default_max_rpm),
             params: settings.params,
@@ -405,7 +408,15 @@ impl CalcState {
         t.flutes = flutes_of(&self.flutes)?;
         t.tip_angle_deg = angle_of(&self.tip_angle_deg)?;
         let max_rpm = number("max_rpm", &self.max_rpm, None)?;
-        let (cut, trace) = feeds_speeds_traced(&t, self.material, max_rpm, &self.params)?;
+        // the depth is for a V-bit or an engraver: for any other kind the text is not looked at
+        let depth = if matches!(self.kind, Kind::VBit | Kind::Engraver)
+            && !self.depth_mm.trim().is_empty()
+        {
+            Some(number("depth_mm", &self.depth_mm, None)?)
+        } else {
+            None
+        };
+        let (cut, trace) = feeds_speeds_traced_at(&t, self.material, max_rpm, &self.params, depth)?;
         Ok(Calculation {
             cut,
             trace,
@@ -421,7 +432,19 @@ impl Calculation {
         let p = &t.params;
         let n = fmt_num;
         let mut out = Vec::new();
-        if t.uses_point {
+        if let (Some(depth), Some(width), Some(angle)) = (t.depth_mm, t.v_width_mm, t.tip_angle_deg)
+        {
+            out.push(fill(
+                Msg::FormVWidth.tr(lang),
+                &[
+                    n(depth).as_str(),
+                    n(angle).as_str(),
+                    n(p.v_bit_flat_mm).as_str(),
+                    n(width).as_str(),
+                    n(t.working_mm).as_str(),
+                ],
+            ));
+        } else if t.uses_point {
             out.push(fill(
                 Msg::FormPoint.tr(lang),
                 &[
@@ -1338,6 +1361,60 @@ mod tests {
         );
         assert!(lines.iter().any(|l| l.starts_with("depth of a pass")));
         assert!(lines.iter().any(|l| l.starts_with("plunge = feed")));
+    }
+
+    #[test]
+    fn a_v_bit_with_a_depth_shows_the_width_of_the_cut_and_the_formula_with_its_numbers() {
+        let mut w = window("calc_v");
+        w.calc.kind = Kind::VBit;
+        w.calc.diameter_mm = "3.175".into();
+        w.calc.tip_angle_deg = "60".into();
+        w.calc.max_rpm = "100000".into();
+        // no depth: no width, and the explanation of the point as before
+        let plain = w.calc.compute().unwrap();
+        assert_eq!(plain.trace.v_width_mm, None);
+        assert!(plain.explain(Lang::En)[0].contains("diameter of its point"));
+        // 0.5 mm deep with a 60 degree bit and the flat of 0.1 mm: 2 x 0.5 x tan 30 + 0.1 = 0.6774 mm
+        w.calc.depth_mm = "0.5".into();
+        let c = w.calc.compute().unwrap();
+        let width = c.trace.v_width_mm.unwrap();
+        assert!((width - 0.677_350).abs() < 1e-5, "{width}");
+        assert_eq!(c.trace.working_mm, width);
+        let lines = c.explain(Lang::En);
+        assert!(
+            lines[0].contains("2 × 0.5 × tan(60° / 2) + 0.1 = 0.6774 mm"),
+            "{lines:?}"
+        );
+        // every language has the line with its numbers filled
+        for l in Lang::ALL {
+            let first = &c.explain(l)[0];
+            assert!(first.contains("0.6774") && !first.contains('{'), "{first}");
+        }
+        // the flat of the numbers of the calculation counts
+        w.calc.params.v_bit_flat_mm = 0.0;
+        let sharp = w.calc.compute().unwrap().trace.v_width_mm.unwrap();
+        assert!((sharp - 0.577_350).abs() < 1e-5, "{sharp}");
+    }
+
+    #[test]
+    fn the_depth_of_a_v_bit_is_checked_and_a_tool_that_is_not_a_v_bit_ignores_it() {
+        let mut w = window("calc_v2");
+        w.calc.kind = Kind::VBit;
+        w.calc.diameter_mm = "3.175".into();
+        w.calc.tip_angle_deg = "60".into();
+        for bad in ["-1", "deep", "101"] {
+            w.calc.depth_mm = bad.into();
+            assert!(w.calc.compute().unwrap_err().contains("depth_mm"), "{bad}");
+        }
+        w.calc.tip_angle_deg = "5".into();
+        w.calc.depth_mm = "0.5".into();
+        assert!(w.calc.compute().unwrap_err().contains("angle_deg"));
+        // a drill has no use for a depth: it is not looked at, even if it is nonsense
+        w.calc.kind = Kind::Drill;
+        w.calc.tip_angle_deg = String::new();
+        w.calc.depth_mm = "deep".into();
+        let c = w.calc.compute().unwrap();
+        assert_eq!(c.trace.v_width_mm, None);
     }
 
     #[test]

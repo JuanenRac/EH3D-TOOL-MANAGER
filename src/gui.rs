@@ -3,7 +3,8 @@
 
 use crate::calc::{
     CHIP_FRACTION_LIMITS, DRILL_PLUNGE_LIMITS, MATERIALS, MAX_PASS_LIMITS, PASS_FRACTION_LIMITS,
-    PLUNGE_RATIO_LIMITS, SURFACE_SPEED_LIMITS, WORKING_LIMITS,
+    PLUNGE_RATIO_LIMITS, SURFACE_SPEED_LIMITS, V_BIT_ANGLE_LIMITS, V_BIT_FLAT_LIMITS,
+    WORKING_LIMITS,
 };
 use crate::lang::{fill, Lang, Msg};
 use crate::model::{Wear, KINDS};
@@ -382,6 +383,8 @@ impl App {
                     });
                 text_field(ui, Msg::MaxRpm.tr(lang), &mut c.max_rpm);
                 ui.end_row();
+                text_field(ui, Msg::CutDepth.tr(lang), &mut c.depth_mm);
+                ui.end_row();
             });
     }
 
@@ -411,6 +414,11 @@ impl App {
                 ui.label(egui::RichText::new(Msg::ResPass.tr(lang)).color(DIM));
                 ui.label(format!("{} mm", fmt_num(cut.pass_depth_mm)));
                 ui.end_row();
+                if let Some(width) = calculation.trace.v_width_mm {
+                    ui.label(egui::RichText::new(Msg::ResVWidth.tr(lang)).color(DIM));
+                    ui.label(format!("{} mm", fmt_num(width)));
+                    ui.end_row();
+                }
             });
         if cut.rpm_limited {
             ui.colored_label(ACCENT, Msg::SpindleLimits.tr(lang));
@@ -505,6 +513,20 @@ impl App {
                         &mut p.max_pass_mm,
                         MAX_PASS_LIMITS,
                         0.05,
+                    );
+                    number_row(
+                        ui,
+                        Msg::ParVAngle.tr(lang),
+                        &mut p.v_bit_angle_deg,
+                        V_BIT_ANGLE_LIMITS,
+                        1.0,
+                    );
+                    number_row(
+                        ui,
+                        Msg::ParVFlat.tr(lang),
+                        &mut p.v_bit_flat_mm,
+                        V_BIT_FLAT_LIMITS,
+                        0.01,
                     );
                 });
             if ui.button(Msg::ResetParams.tr(lang)).clicked() {

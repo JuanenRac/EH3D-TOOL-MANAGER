@@ -46,3 +46,9 @@ plunge_ratio = 0.3
 # The depth of a pass is the working diameter times this number (0.01 to 2), and at most max_pass_mm (0.01 to 25).
 pass_fraction = 0.5
 max_pass_mm = 1.0
+
+# The width of the cut of a V-bit is 2 x depth x tan(angle / 2) + flat (the vbit command and calc --depth).
+# The included angle a V-bit is taken to have when none is given, in degrees (10 to 170).
+v_bit_angle_deg = 60
+# The width of the flat tip of a V-bit, in mm (0 to 5; 0 is a sharp point).
+v_bit_flat_mm = 0.1

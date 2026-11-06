@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 115 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 126 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.6` |
 | Maturità | Impalcatura |
-| Test | 115 |
+| Test | 126 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-tools` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 115 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 126 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`, programma `eh3d-tools-gui`): una tabella degli utensili che si aggiungono, modificano e rimuovono con i controlli della riga di comando, filtri e ricerca, importazione ed esportazione CSV con gli errori della libreria e un calcolatore di avanzamenti e velocità che mostra formule e condizioni; la sua logica è testata, ma non è ancora stata compilata né guardata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -80,6 +80,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
 * **Un magazzino che regge:** il numero di un utensile rimosso non viene più riassegnato (il magazzino conserva `next_id`), un id che non è un numero intero viene indicato come tale, il CSV rifiuta testo dopo le virgolette di chiusura, un testo che inizia come una formula (`=`, `+`, `-`, `@`) viene scritto come testo perché il foglio di calcolo non lo esegua, il materiale ha un limite, `--holes` è un numero intero, un'opzione sconosciuta è un errore e `calc` dice che il risultato per una fresa a V o un incisore è solo un punto di partenza.
+* **La larghezza del taglio di una fresa a V:** `eh3d-tools vbit --depth MM [--angle GRADI] [--flat MM]` calcola `2 x profondità x tan(angolo / 2) + punta piatta` (una fresa da 60 gradi a 0,5 mm dà 0,5774 mm più la punta piatta di 0,1 mm = 0,6774 mm); l'angolo va da 10 a 170 gradi, la profondità da 0 a 100 mm e la punta piatta da 0 a 5 mm, e ciò che non viene indicato è il valore di `tools.cfg`. `calc --depth MM` usa questa larghezza come diametro con cui lavora una fresa a V o un incisore negli avanzamenti e velocità, e il calcolatore della finestra ha un campo per la profondità, mostra la larghezza del taglio e la formula con i suoi numeri; senza profondità i numeri sono quelli di sempre.
 
 ## 🔒 Sicurezza e protezione
 
@@ -111,7 +112,8 @@ EH3D-TOOL-MANAGER/
 │   ├── store.rs                                 una parte della logica
 │   └── window.rs                                lo stato della finestra senza schermo: il magazzino, il modulo, i filtri e il calcolatore
 ├── tests/
-│   └── crib.rs                                  test della libreria e della riga di comando
+│   ├── crib.rs                                  test della libreria e della riga di comando
+│   └── vbit.rs                                  test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni
 ├── docs/
 │   ├── architecture.json                        dati dell'immagine di Architettura
 │   └── structure.json                           dati dell'immagine di Struttura
@@ -129,7 +131,7 @@ EH3D-TOOL-MANAGER/
 
 ## ⚙️ Configurazione
 
-Il file di configurazione è `tools.cfg` nella cartella del programma (la variabile `EH3D_TOOLS_DIR`, oppure `%APPDATA%\eh3d-tools` su Windows, oppure `~/.config/eh3d-tools` altrove), letto dalla finestra e dal comando `calc`: la lingua e la dimensione della finestra, il file del magazzino, la velocità del mandrino con cui parte il calcolatore e ogni numero con cui si calcolano avanzamenti e velocità (la velocità di taglio e l'avanzamento per dente di ogni materiale e i fattori dell'affondamento e della profondità di passata) sono righe `chiave = valore`, con i limiti controllati e una riga sbagliata nominata nell'errore. `tools.cfg.example` elenca ogni chiave con il valore predefinito. A parte questo, ciò che la persona sceglie si passa come argomenti della riga di comando (vedi Interfacce) e ogni valore predefinito è scritto nella guida del comando (`eh3d-tools help`). I limiti di un valore sono costanti con nome nel codice, coperte da test.
+Il file di configurazione è `tools.cfg` nella cartella del programma (la variabile `EH3D_TOOLS_DIR`, oppure `%APPDATA%\eh3d-tools` su Windows, oppure `~/.config/eh3d-tools` altrove), letto dalla finestra e dal comando `calc`: la lingua e la dimensione della finestra, il file del magazzino, la velocità del mandrino con cui parte il calcolatore e ogni numero con cui si calcolano avanzamenti e velocità (la velocità di taglio e l'avanzamento per dente di ogni materiale, i fattori dell'affondamento e della profondità di passata, e `v_bit_angle_deg` e `v_bit_flat_mm`, l'angolo (da 10 a 170 gradi, 60 per impostazione predefinita) e la larghezza della punta piatta (da 0 a 5 mm, 0,1 per impostazione predefinita) con cui si calcola una fresa a V) sono righe `chiave = valore`, con i limiti controllati e una riga sbagliata nominata nell'errore. `tools.cfg.example` elenca ogni chiave con il valore predefinito. A parte questo, ciò che la persona sceglie si passa come argomenti della riga di comando (vedi Interfacce) e ogni valore predefinito è scritto nella guida del comando (`eh3d-tools help`). I limiti di un valore sono costanti con nome nel codice, coperte da test.
 
 ## 🚀 Avvio rapido
 
@@ -146,7 +148,7 @@ cargo run --release --features gui --bin eh3d-tools-gui
 
 ## 🧪 Test
 
-La suite ha 115 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 126 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -181,7 +183,8 @@ EH3D-TOOL-MANAGER/
 │   ├── store.rs                                 una parte della logica
 │   └── window.rs                                lo stato della finestra senza schermo: il magazzino, il modulo, i filtri e il calcolatore
 ├── tests/
-│   └── crib.rs                                  test della libreria e della riga di comando
+│   ├── crib.rs                                  test della libreria e della riga di comando
+│   └── vbit.rs                                  test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni
 ├── docs/
 │   ├── architecture.json                        dati dell'immagine di Architettura
 │   └── structure.json                           dati dell'immagine di Struttura

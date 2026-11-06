@@ -65,6 +65,12 @@ pub const DRILL_PLUNGE_LIMITS: (f64, f64) = (0.0001, 1.0);
 pub const PLUNGE_RATIO_LIMITS: (f64, f64) = (0.01, 1.0);
 pub const PASS_FRACTION_LIMITS: (f64, f64) = (0.01, 2.0);
 pub const MAX_PASS_LIMITS: (f64, f64) = (0.01, 25.0);
+/// The included angle of a V-bit the width of the cut is worked out for, in degrees.
+pub const V_BIT_ANGLE_LIMITS: (f64, f64) = (10.0, 170.0);
+/// The width of the flat tip of a V-bit, in mm (0 is a sharp point).
+pub const V_BIT_FLAT_LIMITS: (f64, f64) = (0.0, 5.0);
+/// The deepest cut a width is worked out for, in mm.
+pub const V_BIT_DEPTH_LIMITS: (f64, f64) = (0.0, 100.0);
 
 /// The numbers the feeds and speeds are worked out with.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -85,6 +91,10 @@ pub struct CalcParams {
     /// The depth of a pass is the working diameter times this number, and at most `max_pass_mm`.
     pub pass_fraction: f64,
     pub max_pass_mm: f64,
+    /// The included angle a V-bit is taken to have when the person gives none (the `vbit` command), in degrees.
+    pub v_bit_angle_deg: f64,
+    /// The width of the flat tip of a V-bit, in mm: the cut is this much wider than the cone alone makes it.
+    pub v_bit_flat_mm: f64,
 }
 
 impl Default for CalcParams {
@@ -99,6 +109,8 @@ impl Default for CalcParams {
             plunge_ratio: 0.3,
             pass_fraction: 0.5,
             max_pass_mm: 1.0,
+            v_bit_angle_deg: 60.0,
+            v_bit_flat_mm: 0.1,
         }
     }
 }
@@ -149,8 +161,19 @@ impl CalcParams {
         within("drill_plunge", self.drill_plunge, DRILL_PLUNGE_LIMITS)?;
         within("plunge_ratio", self.plunge_ratio, PLUNGE_RATIO_LIMITS)?;
         within("pass_fraction", self.pass_fraction, PASS_FRACTION_LIMITS)?;
-        within("max_pass_mm", self.max_pass_mm, MAX_PASS_LIMITS)
+        within("max_pass_mm", self.max_pass_mm, MAX_PASS_LIMITS)?;
+        within("v_bit_angle_deg", self.v_bit_angle_deg, V_BIT_ANGLE_LIMITS)?;
+        within("v_bit_flat_mm", self.v_bit_flat_mm, V_BIT_FLAT_LIMITS)
     }
+}
+
+/// The width of the cut of a V-bit at a depth: the cone opens by `2 * depth * tan(angle / 2)` and the flat tip adds its own width, so
+/// `width = 2 * depth * tan(angle / 2) + flat`. The angle is the included angle of the bit (10 to 170 degrees), the depth is 0 or more (at most 100 mm) and the flat is from 0 to 5 mm.
+pub fn v_bit_width_mm(depth_mm: f64, angle_deg: f64, flat_mm: f64) -> Result<f64, String> {
+    within("depth_mm", depth_mm, V_BIT_DEPTH_LIMITS)?;
+    within("angle_deg", angle_deg, V_BIT_ANGLE_LIMITS)?;
+    within("flat_mm", flat_mm, V_BIT_FLAT_LIMITS)?;
+    Ok(2.0 * depth_mm * (angle_deg.to_radians() / 2.0).tan() + flat_mm)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -185,6 +208,11 @@ pub struct Trace {
     pub chip_working_mm: f64,
     /// The feed before it is rounded.
     pub feed: f64,
+    /// The depth of the cut a V-bit or an engraver was asked for, and the width that depth makes (see `v_bit_width_mm`); `None` when no depth was given.
+    pub depth_mm: Option<f64>,
+    pub v_width_mm: Option<f64>,
+    /// The included angle of the tool, when it has one.
+    pub tip_angle_deg: Option<f64>,
     pub params: CalcParams,
 }
 
@@ -210,6 +238,19 @@ pub fn feeds_speeds_traced(
     max_rpm: f64,
     params: &CalcParams,
 ) -> Result<(Cut, Trace), String> {
+    feeds_speeds_traced_at(tool, material, max_rpm, params, None)
+}
+
+/// The cut and the numbers behind it, for a V-bit or an engraver that cuts to `depth_mm`: the diameter it works with is the width of the cut at that depth (see
+/// `v_bit_width_mm`, with the angle of the tool and the flat of `params`), at most the diameter of the tool and not under 0.01 mm. With `None` the diameter of the point
+/// is kept between `working_min_mm` and `working_max_mm`, as always. A depth for any other kind of tool is an error.
+pub fn feeds_speeds_traced_at(
+    tool: &Tool,
+    material: Material,
+    max_rpm: f64,
+    params: &CalcParams,
+    depth_mm: Option<f64>,
+) -> Result<(Cut, Trace), String> {
     tool.validate()?;
     if !max_rpm.is_finite() || max_rpm < 1000.0 {
         return Err(format!(
@@ -225,7 +266,19 @@ pub fn feeds_speeds_traced(
     params.validate()?;
     // a V-bit or an engraver cuts at its widest only at the full depth: use the diameter at the point it works from
     let uses_point = matches!(tool.kind, Kind::VBit | Kind::Engraver);
-    let working = if uses_point {
+    if depth_mm.is_some() && !uses_point {
+        return Err(format!(
+            "a cut depth is for a V-bit or an engraver, not for a {}",
+            tool.kind.key()
+        ));
+    }
+    let v_width = match (uses_point, depth_mm, tool.tip_angle_deg) {
+        (true, Some(d), Some(a)) => Some(v_bit_width_mm(d, a, params.v_bit_flat_mm)?),
+        _ => None,
+    };
+    let working = if let Some(w) = v_width {
+        w.min(tool.diameter_mm).max(WORKING_LIMITS.0)
+    } else if uses_point {
         tool.diameter_mm
             .clamp(params.working_min_mm, params.working_max_mm)
     } else {
@@ -268,6 +321,9 @@ pub fn feeds_speeds_traced(
         rpm,
         chip_working_mm: chip_working,
         feed,
+        depth_mm,
+        v_width_mm: v_width,
+        tip_angle_deg: tool.tip_angle_deg,
         params: *params,
     };
     Ok((cut, trace))
@@ -337,5 +393,91 @@ mod tests {
             ..CalcParams::default()
         };
         assert!(r.validate().unwrap_err().contains("surface_speed_fr4"));
+    }
+
+    #[test]
+    fn the_width_of_a_v_bit_is_twice_the_depth_times_the_tangent_of_half_the_angle_plus_the_flat() {
+        // 60 degrees at 0.5 mm: 2 x 0.5 x tan 30 = 0.57735, and the flat of 0.1 mm makes 0.67735
+        let w = v_bit_width_mm(0.5, 60.0, 0.1).unwrap();
+        assert!((w - 0.677_350).abs() < 1e-5, "{w}");
+        // 90 degrees: the width is twice the depth; a sharp point adds nothing; no depth leaves only the flat
+        assert!((v_bit_width_mm(1.0, 90.0, 0.0).unwrap() - 2.0).abs() < 1e-12);
+        assert_eq!(v_bit_width_mm(0.0, 60.0, 0.1).unwrap(), 0.1);
+        // 120 degrees at 0.2 mm: 2 x 0.2 x tan 60 = 0.69282
+        assert!((v_bit_width_mm(0.2, 120.0, 0.0).unwrap() - 0.692_820).abs() < 1e-5);
+        // the defaults of tools.cfg are the ones of the example in the documents
+        let d = CalcParams::default();
+        assert_eq!((d.v_bit_angle_deg, d.v_bit_flat_mm), (60.0, 0.1));
+    }
+
+    #[test]
+    fn the_width_of_a_v_bit_refuses_what_makes_no_sense_and_names_it() {
+        for (depth, angle, flat, name) in [
+            (-0.1, 60.0, 0.1, "depth_mm"),
+            (100.1, 60.0, 0.1, "depth_mm"),
+            (f64::NAN, 60.0, 0.1, "depth_mm"),
+            (0.5, 9.9, 0.1, "angle_deg"),
+            (0.5, 170.1, 0.1, "angle_deg"),
+            (0.5, f64::INFINITY, 0.1, "angle_deg"),
+            (0.5, 60.0, -0.01, "flat_mm"),
+            (0.5, 60.0, 5.1, "flat_mm"),
+        ] {
+            let e = v_bit_width_mm(depth, angle, flat).unwrap_err();
+            assert!(e.contains(name), "{e}");
+        }
+        assert!(v_bit_width_mm(0.0, 10.0, 0.0).is_ok());
+        assert!(v_bit_width_mm(100.0, 170.0, 5.0).is_ok());
+        let bad = CalcParams {
+            v_bit_angle_deg: 5.0,
+            ..CalcParams::default()
+        };
+        assert!(bad.validate().unwrap_err().contains("v_bit_angle_deg"));
+        let bad = CalcParams {
+            v_bit_flat_mm: 9.0,
+            ..CalcParams::default()
+        };
+        assert!(bad.validate().unwrap_err().contains("v_bit_flat_mm"));
+    }
+
+    #[test]
+    fn a_v_bit_with_a_depth_works_at_the_width_of_the_cut_and_without_one_as_always() {
+        let mut v = Tool::new("v", Kind::VBit, 3.175);
+        v.tip_angle_deg = Some(60.0);
+        let p = CalcParams::default();
+        // no depth: the numbers of always (the point is kept between 0.1 and 0.5 mm, so 0.5 mm)
+        let (_, plain) = feeds_speeds_traced(&v, Material::Aluminium, 100_000.0, &p).unwrap();
+        assert_eq!(
+            (plain.working_mm, plain.v_width_mm, plain.depth_mm),
+            (0.5, None, None)
+        );
+        // 0.5 mm deep: the width 0.67735 mm is the diameter it works with
+        let (cut, t) =
+            feeds_speeds_traced_at(&v, Material::Aluminium, 100_000.0, &p, Some(0.5)).unwrap();
+        assert!((t.working_mm - 0.677_350).abs() < 1e-5, "{}", t.working_mm);
+        assert_eq!((t.depth_mm, t.tip_angle_deg), (Some(0.5), Some(60.0)));
+        assert_eq!(t.v_width_mm, Some(t.working_mm));
+        // speed = 200 x 1000 / (pi x 0.67735) = about 93987 rpm, which the spindle of 100000 rpm can turn
+        assert!(!cut.rpm_limited);
+        assert!((cut.rpm - 93_987.0).abs() <= 2.0, "{}", cut.rpm);
+        // a deep cut cannot be wider than the bit: 3.175 mm at most
+        let (_, deep) =
+            feeds_speeds_traced_at(&v, Material::Aluminium, 100_000.0, &p, Some(20.0)).unwrap();
+        assert_eq!(deep.working_mm, 3.175);
+        // depth 0 and a sharp point would be a diameter of 0: the working diameter is never under 0.01 mm
+        let sharp = CalcParams {
+            v_bit_flat_mm: 0.0,
+            ..CalcParams::default()
+        };
+        let (_, zero) =
+            feeds_speeds_traced_at(&v, Material::Aluminium, 100_000.0, &sharp, Some(0.0)).unwrap();
+        assert_eq!(zero.working_mm, 0.01);
+        // a depth for a tool that is not a V-bit or an engraver is an error
+        let d = Tool::new("d", Kind::Drill, 1.0);
+        let e = feeds_speeds_traced_at(&d, Material::Fr4, 24000.0, &p, Some(0.5)).unwrap_err();
+        assert!(e.contains("V-bit") && e.contains("drill"), "{e}");
+        // an angle the width cannot be worked out for is refused with the name of the value
+        v.tip_angle_deg = Some(5.0);
+        let e = feeds_speeds_traced_at(&v, Material::Fr4, 24000.0, &p, Some(0.5)).unwrap_err();
+        assert!(e.contains("angle_deg"), "{e}");
     }
 }

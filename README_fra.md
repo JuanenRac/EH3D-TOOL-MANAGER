@@ -18,7 +18,7 @@
 
 ---
 
-**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-tools`) avec 115 tests exécutés sur un ordinateur : garde les outils avec leur géométrie et leur usure, les stocke en JSON ou CSV et calcule des avances et vitesses de départ par matériau. Une fenêtre (`eh3d-tools-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
+**Vérification d'honnêteté - ce qui fonctionne aujourd'hui :** une bibliothèque Rust et un programme en ligne de commande (`eh3d-tools`) avec 126 tests exécutés sur un ordinateur : garde les outils avec leur géométrie et leur usure, les stocke en JSON ou CSV et calcule des avances et vitesses de départ par matériau. Une fenêtre (`eh3d-tools-gui`, compilée avec la fonctionnalité `gui`) est écrite et sa logique est testée, mais elle n'a été ni compilée ni regardée sur un écran ; rien n'a été essayé sur une machine et rien n'a été vérifié sur une collection de fichiers réels.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Maturité | Échafaudage |
-| Tests | 115 |
+| Tests | 126 |
 | Pile technique | Rust |
 | Sur du matériel réel | Non essayé : rien ici n'a fonctionné sur une machine |
 
@@ -47,7 +47,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Cœur | 🟡 | garde les outils avec leur géométrie et leur usure, les stocke en JSON ou CSV et calcule des avances et vitesses de départ par matériau ; testé sur un ordinateur avec des entrées normales et abîmées, pas avec une collection de fichiers réels. |
 | Ligne de commande | 🟡 | `eh3d-tools` exécute les mêmes fonctions que la bibliothèque et affiche le résultat ; chaque erreur revient sous forme de message et de code de sortie non nul. |
-| Tests | 🟡 | 115 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
+| Tests | 🟡 | 126 tests passent (`cargo test`), avec des cas normaux, des cas limites et des entrées abîmées. |
 | Sécurité | 🟡 | Rust sûr et simple (`forbid(unsafe_code)`) : rien ne panique sur les fichiers reçus et une mauvaise valeur est une erreur avec sa raison ; pas de revue indépendante. |
 | Fenêtre | 🟠 | Écrite (egui, `--features gui`, programme `eh3d-tools-gui`) : un tableau des outils que l'on ajoute, modifie et retire avec les vérifications de la ligne de commande, des filtres et une recherche, l'import et l'export CSV avec les erreurs de la bibliothèque et un calculateur d'avances et de vitesses qui montre ses formules et ses conditions ; sa logique est testée, mais elle n'a pas encore été compilée ni regardée sur un écran. |
 | Matériel réel | 🔴 | Non essayé : rien ici n'a été exécuté sur une machine. |
@@ -80,6 +80,7 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 * **Sans deviner :** une valeur absurde est une erreur qui dit laquelle et pourquoi, jamais un résultat qui n'en a que l'air.
 * **Pas de code unsafe :** `#![forbid(unsafe_code)]` dans la bibliothèque et le programme.
 * **Un magasin qui tient :** le numéro d'un outil retiré n'est jamais redonné (le magasin garde `next_id`), un id qui n'est pas un nombre entier est signalé comme tel, le CSV refuse du texte après un guillemet fermant, un texte qui commence comme une formule (`=`, `+`, `-`, `@`) est écrit comme texte pour que le tableur ne l'exécute pas, la matière a une limite, `--holes` est un nombre entier, une option inconnue est une erreur, et `calc` dit que le résultat pour une fraise en V ou un graveur n'est qu'un point de départ.
+* **La largeur de coupe d'une fraise en V :** `eh3d-tools vbit --depth MM [--angle DEGRÉS] [--flat MM]` calcule `2 x profondeur x tan(angle / 2) + méplat` (une fraise de 60 degrés à 0,5 mm donne 0,5774 mm plus le méplat de 0,1 mm = 0,6774 mm) ; l'angle va de 10 à 170 degrés, la profondeur de 0 à 100 mm et le méplat de 0 à 5 mm, et ce qui n'est pas donné est la valeur de `tools.cfg`. `calc --depth MM` utilise cette largeur comme diamètre avec lequel une fraise en V ou un burin travaille dans les avances et vitesses, et le calculateur de la fenêtre a un champ pour la profondeur, montre la largeur de coupe et la formule avec ses nombres ; sans profondeur, les nombres sont ceux de toujours.
 
 ## 🔒 Sécurité et protection
 
@@ -111,7 +112,8 @@ EH3D-TOOL-MANAGER/
 │   ├── store.rs                                 une partie de la logique
 │   └── window.rs                                l'état de la fenêtre sans écran : l'outillage, le formulaire, les filtres et le calculateur
 ├── tests/
-│   └── crib.rs                                  tests de la bibliothèque et de la ligne de commande
+│   ├── crib.rs                                  tests de la bibliothèque et de la ligne de commande
+│   └── vbit.rs                                  tests de la largeur de coupe d'une fraise en V : la commande, la profondeur dans calc et les réglages
 ├── docs/
 │   ├── architecture.json                        données de l'image d'Architecture
 │   └── structure.json                           données de l'image de Structure
@@ -129,7 +131,7 @@ EH3D-TOOL-MANAGER/
 
 ## ⚙️ Configuration
 
-Le fichier de configuration est `tools.cfg` dans le dossier du programme (la variable `EH3D_TOOLS_DIR`, ou `%APPDATA%\eh3d-tools` sous Windows, ou `~/.config/eh3d-tools` ailleurs), lu par la fenêtre et par la commande `calc` : la langue et la taille de la fenêtre, le fichier de l'outillage, la vitesse de broche avec laquelle le calculateur démarre et chaque nombre avec lequel les avances et vitesses sont calculées (la vitesse de coupe et l'avance par dent de chaque matériau et les facteurs de la plongée et de la profondeur de passe) sont des lignes `clé = valeur`, avec leurs limites vérifiées et une mauvaise ligne nommée dans l'erreur. `tools.cfg.example` liste chaque clé avec sa valeur par défaut. En dehors de cela, ce que la personne choisit est donné en arguments de la ligne de commande (voir Interfaces) et chaque valeur par défaut est écrite dans l'aide de la commande (`eh3d-tools help`). Les limites d'une valeur sont des constantes nommées dans le code, couvertes par des tests.
+Le fichier de configuration est `tools.cfg` dans le dossier du programme (la variable `EH3D_TOOLS_DIR`, ou `%APPDATA%\eh3d-tools` sous Windows, ou `~/.config/eh3d-tools` ailleurs), lu par la fenêtre et par la commande `calc` : la langue et la taille de la fenêtre, le fichier de l'outillage, la vitesse de broche avec laquelle le calculateur démarre et chaque nombre avec lequel les avances et vitesses sont calculées (la vitesse de coupe et l'avance par dent de chaque matériau, les facteurs de la plongée et de la profondeur de passe, et `v_bit_angle_deg` et `v_bit_flat_mm`, l'angle (de 10 à 170 degrés, 60 par défaut) et la largeur du méplat de la pointe (de 0 à 5 mm, 0,1 par défaut) avec lesquels une fraise en V est calculée) sont des lignes `clé = valeur`, avec leurs limites vérifiées et une mauvaise ligne nommée dans l'erreur. `tools.cfg.example` liste chaque clé avec sa valeur par défaut. En dehors de cela, ce que la personne choisit est donné en arguments de la ligne de commande (voir Interfaces) et chaque valeur par défaut est écrite dans l'aide de la commande (`eh3d-tools help`). Les limites d'une valeur sont des constantes nommées dans le code, couvertes par des tests.
 
 ## 🚀 Démarrage rapide
 
@@ -146,7 +148,7 @@ cargo run --release --features gui --bin eh3d-tools-gui
 
 ## 🧪 Tests
 
-La suite compte 115 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
+La suite compte 126 tests (`cargo test`, exécutés sous Windows et Linux dans le CI). Ils vérifient les cas normaux, les cas limites et les entrées abîmées : fichiers vides, bruit et fichiers coupés ne font jamais paniquer. Le CI exécute aussi `cargo fmt --check`, `cargo clippy` (aussi avec `--features gui`) avec les avertissements comme erreurs et `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilation et publication
 
@@ -181,7 +183,8 @@ EH3D-TOOL-MANAGER/
 │   ├── store.rs                                 une partie de la logique
 │   └── window.rs                                l'état de la fenêtre sans écran : l'outillage, le formulaire, les filtres et le calculateur
 ├── tests/
-│   └── crib.rs                                  tests de la bibliothèque et de la ligne de commande
+│   ├── crib.rs                                  tests de la bibliothèque et de la ligne de commande
+│   └── vbit.rs                                  tests de la largeur de coupe d'une fraise en V : la commande, la profondeur dans calc et les réglages
 ├── docs/
 │   ├── architecture.json                        données de l'image d'Architecture
 │   └── structure.json                           données de l'image de Structure

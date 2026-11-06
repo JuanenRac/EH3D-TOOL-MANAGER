@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 115 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 126 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.6` |
 | Reifegrad | Gerüst |
-| Tests | 115 |
+| Tests | 126 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,7 +47,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-tools` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 115 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
+| Tests | 🟡 | 126 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-tools-gui`): eine Tabelle der Werkzeuge, die mit den Prüfungen der Kommandozeile hinzugefügt, geändert und entfernt werden, Filter und Suche, CSV-Import und -Export mit den Fehlern der Bibliothek und ein Rechner für Vorschübe und Drehzahlen, der seine Formeln und Bedingungen zeigt; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -80,6 +80,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Kein Raten:** Ein unsinniger Wert ist ein Fehler, der sagt welcher und warum, nie ein Ergebnis, das nur richtig aussieht.
 * **Kein unsafe-Code:** `#![forbid(unsafe_code)]` in Bibliothek und Programm.
 * **Ein Werkzeuglager, das hält:** die Nummer eines entfernten Werkzeugs wird nie wieder vergeben (das Lager merkt sich `next_id`), eine ID, die keine ganze Zahl ist, wird als solche gemeldet, das CSV lehnt Text nach einem schließenden Anführungszeichen ab, ein Text, der wie eine Formel beginnt (`=`, `+`, `-`, `@`), wird als Text geschrieben, damit die Tabellenkalkulation ihn nicht ausführt, das Material hat eine Grenze, `--holes` ist eine ganze Zahl, eine unbekannte Option ist ein Fehler, und `calc` sagt, dass das Ergebnis für einen V-Fräser oder Gravierstichel nur ein Ausgangspunkt ist.
+* **Die Schnittbreite eines V-Fräsers:** `eh3d-tools vbit --depth MM [--angle GRAD] [--flat MM]` berechnet `2 x Tiefe x tan(Winkel / 2) + Spitzenfläche` (ein 60-Grad-Fräser bei 0,5 mm ergibt 0,5774 mm plus die flache Spitze von 0,1 mm = 0,6774 mm); der Winkel liegt zwischen 10 und 170 Grad, die Tiefe zwischen 0 und 100 mm und die flache Spitze zwischen 0 und 5 mm, und was nicht angegeben ist, ist der Wert aus `tools.cfg`. `calc --depth MM` nimmt diese Breite als Durchmesser, mit dem ein V-Fräser oder Gravierstichel in den Vorschüben und Drehzahlen arbeitet, und der Rechner des Fensters hat ein Feld für die Tiefe, zeigt die Schnittbreite und die Formel mit ihren Zahlen; ohne Tiefe sind die Zahlen die gewohnten.
 
 ## 🔒 Sicherheit und Schutz
 
@@ -111,7 +112,8 @@ EH3D-TOOL-MANAGER/
 │   ├── store.rs                                 ein Teil der Logik
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner
 ├── tests/
-│   └── crib.rs                                  Tests von Bibliothek und Kommandozeile
+│   ├── crib.rs                                  Tests von Bibliothek und Kommandozeile
+│   └── vbit.rs                                  Tests der Schnittbreite eines V-Fräsers: der Befehl, die Tiefe in calc und die Einstellungen
 ├── docs/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes
@@ -129,7 +131,7 @@ EH3D-TOOL-MANAGER/
 
 ## ⚙️ Konfiguration
 
-Die Konfigurationsdatei ist `tools.cfg` im Ordner des Programms (die Variable `EH3D_TOOLS_DIR`, unter Windows `%APPDATA%\eh3d-tools`, sonst `~/.config/eh3d-tools`), gelesen vom Fenster und vom Befehl `calc`: die Sprache und die Größe des Fensters, die Datei des Werkzeuglagers, die Spindeldrehzahl, mit der der Rechner startet, und jede Zahl, mit der Vorschübe und Drehzahlen berechnet werden (Schnittgeschwindigkeit und Zahnvorschub je Material sowie die Faktoren für das Eintauchen und die Zustelltiefe), sind Zeilen `Schlüssel = Wert`; ihre Grenzen werden geprüft und eine fehlerhafte Zeile wird im Fehler genannt. `tools.cfg.example` listet jeden Schlüssel mit Standardwert auf. Davon abgesehen: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-tools help`). Die Grenzen eines Werts sind benannte Konstanten im Code und durch Tests abgedeckt.
+Die Konfigurationsdatei ist `tools.cfg` im Ordner des Programms (die Variable `EH3D_TOOLS_DIR`, unter Windows `%APPDATA%\eh3d-tools`, sonst `~/.config/eh3d-tools`), gelesen vom Fenster und vom Befehl `calc`: die Sprache und die Größe des Fensters, die Datei des Werkzeuglagers, die Spindeldrehzahl, mit der der Rechner startet, und jede Zahl, mit der Vorschübe und Drehzahlen berechnet werden (Schnittgeschwindigkeit und Zahnvorschub je Material, die Faktoren für das Eintauchen und die Zustelltiefe sowie `v_bit_angle_deg` und `v_bit_flat_mm`, der Winkel (10 bis 170 Grad, standardmäßig 60) und die Breite der flachen Spitze (0 bis 5 mm, standardmäßig 0,1), mit denen ein V-Fräser berechnet wird), sind Zeilen `Schlüssel = Wert`; ihre Grenzen werden geprüft und eine fehlerhafte Zeile wird im Fehler genannt. `tools.cfg.example` listet jeden Schlüssel mit Standardwert auf. Davon abgesehen: Was die Person wählt, wird als Argument der Kommandozeile angegeben (siehe Schnittstellen), und jeder Standardwert steht in der Hilfe des Befehls (`eh3d-tools help`). Die Grenzen eines Werts sind benannte Konstanten im Code und durch Tests abgedeckt.
 
 ## 🚀 Schnellstart
 
@@ -146,7 +148,7 @@ cargo run --release --features gui --bin eh3d-tools-gui
 
 ## 🧪 Tests
 
-Die Suite hat 115 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 126 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -181,7 +183,8 @@ EH3D-TOOL-MANAGER/
 │   ├── store.rs                                 ein Teil der Logik
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner
 ├── tests/
-│   └── crib.rs                                  Tests von Bibliothek und Kommandozeile
+│   ├── crib.rs                                  Tests von Bibliothek und Kommandozeile
+│   └── vbit.rs                                  Tests der Schnittbreite eines V-Fräsers: der Befehl, die Tiefe in calc und die Einstellungen
 ├── docs/
 │   ├── architecture.json                        Daten des Architektur-Bildes
 │   └── structure.json                           Daten des Struktur-Bildes

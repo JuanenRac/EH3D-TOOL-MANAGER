@@ -4,7 +4,7 @@
 
 mod cli_args;
 
-use eh3d_tool_manager::calc::{feeds_speeds_with, Material};
+use eh3d_tool_manager::calc::{feeds_speeds_traced_at, v_bit_width_mm, Material};
 use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear};
 use eh3d_tool_manager::settings::{data_dir, Settings};
 use eh3d_tool_manager::{csv, store};
@@ -21,9 +21,11 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools wear FILE.json                 the tools that are worn or about to be
   eh3d-tools export-csv FILE.json
   eh3d-tools import-csv FILE.json TABLE.csv
-  eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG]
+  eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG] [--depth MM]
+  eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]     the width of the cut of a V-bit at a depth
 
 KIND: drill, end-mill, v-bit, engraver, laser, nozzle. MATERIAL: fr4, aluminium, acrylic, wood, brass.
+vbit works out 2 x depth x tan(angle / 2) + flat (the angle is 10 to 170 degrees, 60 and the flat 0.1 mm by default, both set in tools.cfg); calc --depth uses that width as the diameter a V-bit or an engraver works with.
 The feeds and speeds are starting points to try on a scrap board, not a promise. The numbers they are worked out with can be changed in tools.cfg (see tools.cfg.example).";
 
 fn flag(args: &mut Vec<String>, name: &str) -> Result<Option<f64>, String> {
@@ -177,6 +179,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "calc" => {
             let flutes = whole_flag(&mut args, "--flutes")?;
             let angle = flag(&mut args, "--angle")?;
+            let depth = flag(&mut args, "--depth")?;
             need(&args, 4, "a kind, a diameter, a material and a maximum rpm")?;
             cli_args::finish(&args, 4)?;
             let diameter = args[1]
@@ -192,9 +195,14 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 .map_err(|_| format!("the maximum rpm '{}' is not a number", args[3]))?;
             // the surface speeds, the chip loads and the factors are the ones of tools.cfg (the defaults when there is none)
             let params = Settings::load(&data_dir())?.params;
-            let c = feeds_speeds_with(&t, Material::parse(&args[2])?, max_rpm, &params)?;
+            let (c, trace) =
+                feeds_speeds_traced_at(&t, Material::parse(&args[2])?, max_rpm, &params, depth)?;
+            let width = trace
+                .v_width_mm
+                .map(|w| format!(", V-bit cut width {w:.4} mm"))
+                .unwrap_or_default();
             println!(
-                "{} rpm, feed {} mm/min, plunge {} mm/min, pass {} mm{}{}",
+                "{} rpm, feed {} mm/min, plunge {} mm/min, pass {} mm{}{}{}",
                 c.rpm,
                 c.feed_mm_min,
                 c.plunge_mm_min,
@@ -204,11 +212,28 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 } else {
                     ""
                 },
+                width,
                 if matches!(t.kind, Kind::VBit | Kind::Engraver) {
                     " - only a starting point: what a V-bit or an engraver cuts with depends on the depth, try it on a scrap board"
                 } else {
                     ""
                 }
+            );
+            Ok(())
+        }
+        "vbit" => {
+            let depth = flag(&mut args, "--depth")?;
+            let angle = flag(&mut args, "--angle")?;
+            let flat = flag(&mut args, "--flat")?;
+            cli_args::finish(&args, 0)?;
+            let depth = depth.ok_or("vbit needs --depth MM")?;
+            // the angle and the flat that are not given are the ones of tools.cfg (60 degrees and 0.1 mm without one)
+            let params = Settings::load(&data_dir())?.params;
+            let angle = angle.unwrap_or(params.v_bit_angle_deg);
+            let flat = flat.unwrap_or(params.v_bit_flat_mm);
+            let width = v_bit_width_mm(depth, angle, flat)?;
+            println!(
+                "cut width {width:.4} mm = 2 x depth {depth} x tan(angle {angle} / 2) + flat {flat}"
             );
             Ok(())
         }
