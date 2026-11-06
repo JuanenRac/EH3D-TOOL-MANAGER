@@ -3,6 +3,9 @@
 All notable changes to this project are documented here.
 
 ## [Unreleased]
+
+## [0.0.6] - The window with the tool table, the feeds and speeds calculator and its configuration file
+
 - **A window:** built with the `gui` feature (egui, the look the other programs of the suite share), program `eh3d-tools-gui`, which opens without a console on Windows. A table of the tools with filters (a search, the kind, the wear) and a sort, a form to add, change and remove a tool with the same checks and numbers as the command line (the number of a removed tool is never given again), the use of a job added to the counters of a tool, the crib file opened and saved, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows the formula of every number and the conditions that applied, with the numbers it works with editable. All of it in the eight languages; the state and the actions live in a module with tests and the screen only draws them.
 - **Settings in `tools.cfg`:** the language, the size of the window, the crib file, the spindle speed the calculator starts with and every number the feeds and speeds are worked out with (the surface speed and the chip load of each material and the factors of the plunge and of the depth of a pass) are lines of a file instead of constants of the code; a value that makes no sense is an error that names its line, and `tools.cfg.example` lists every key with its default. The `calc` command reads the same file, and without it gives the numbers it always gave.
 - **A tool can be replaced by its number in the library:** `Crib::update` makes the same checks as `add` and keeps the number and the counter of numbers; `Wear::fraction` gives the fraction of the limits that is used.
