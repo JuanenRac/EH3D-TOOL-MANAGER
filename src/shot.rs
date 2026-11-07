@@ -3,6 +3,7 @@
 //! nothing of the person's changed.
 
 use crate::lang::Lang;
+use crate::window::Tab;
 use std::path::PathBuf;
 
 /// The smallest side of the window of a picture, in pixels.
@@ -73,6 +74,8 @@ pub struct WindowArgs {
     pub lang: Option<Lang>,
     /// The picture mode: the window opens, saves a PNG file and closes by itself.
     pub shot: Option<ShotRequest>,
+    /// The page the window opens on (`--tab tools|calc`); none keeps the table of the tools.
+    pub tab: Option<Tab>,
 }
 
 /// Reads a size written `WIDTHxHEIGHT` (`1280x720`, also with a capital X), each side between [`SIZE_MIN`] and [`SIZE_MAX`].
@@ -98,7 +101,7 @@ struct PictureOptions {
     replace: bool,
 }
 
-/// Reads the arguments of the window (after an optional leading `gui`): `--shot FILE.png`, `--size WxH`, `--theme`, `--wait N`, `--replace`, `--lang CODE`, `--open FILE` and bare
+/// Reads the arguments of the window (after an optional leading `gui`): `--shot FILE.png`, `--size WxH`, `--theme`, `--wait N`, `--replace`, `--lang CODE`, `--tab tools|calc`, `--open FILE` and bare
 /// file names, of which at most `max_files` are accepted. The answer for a mistake is the reason.
 pub fn parse_window_args(args: &[String], max_files: usize) -> Result<WindowArgs, String> {
     let args = if args.first().is_some_and(|a| a == "gui") {
@@ -142,6 +145,10 @@ pub fn parse_window_args(args: &[String], max_files: usize) -> Result<WindowArgs
             "--lang" => {
                 let tag = iter.next().ok_or("--lang needs a language code")?;
                 parsed.lang = Some(Lang::from_code(tag).ok_or("unknown language code")?);
+            }
+            "--tab" => {
+                let text = iter.next().ok_or("--tab needs tools or calc")?;
+                parsed.tab = Some(Tab::parse(text).ok_or("--tab is tools or calc")?);
             }
             "--replace" => picture.replace = true,
             "--open" => {
@@ -255,6 +262,20 @@ mod tests {
     }
 
     #[test]
+    fn the_page_is_read_in_any_case_with_or_without_a_picture() {
+        assert_eq!(parse_window_args(&[], 1).unwrap().tab, None);
+        let window = parse_window_args(&args(&["--tab", "Calc"]), 1).unwrap();
+        assert_eq!(window.tab, Some(Tab::Calc));
+        assert_eq!(window.shot, None);
+        let picture = parse_window_args(&args(&["--shot", "a.png", "--tab", "tools"]), 1).unwrap();
+        assert_eq!(picture.tab, Some(Tab::Tools));
+        assert!(picture.shot.is_some());
+        for tab in [Tab::Tools, Tab::Calc] {
+            assert_eq!(Tab::parse(tab.name()), Some(tab));
+        }
+    }
+
+    #[test]
     fn the_picture_mode_has_its_defaults() {
         let parsed = parse_window_args(&args(&["--shot", "start.png"]), 1).unwrap();
         assert_eq!(
@@ -334,6 +355,8 @@ mod tests {
             (vec!["--replace"], "need --shot"),
             (vec!["--lang"], "needs a language code"),
             (vec!["--lang", "xx"], "unknown language code"),
+            (vec!["--tab"], "needs tools or calc"),
+            (vec!["--tab", "table"], "--tab is tools or calc"),
             (vec!["--open"], "needs a file"),
             (vec!["--nonsense"], "unknown option --nonsense"),
             (vec!["a.json", "b.json"], "only one file"),

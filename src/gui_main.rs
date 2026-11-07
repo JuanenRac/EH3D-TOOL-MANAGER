@@ -9,6 +9,7 @@
 
 use eh3d_tool_manager::settings::data_dir;
 use eh3d_tool_manager::shot;
+use eh3d_tool_manager::window::Tab;
 use std::process::ExitCode;
 
 /// The picture mode: the window opens with the default settings and a crib that is only in memory, saves what it draws as a PNG file and closes.
@@ -27,7 +28,12 @@ fn take_picture(args: &[String]) -> ExitCode {
     let lang = parsed
         .lang
         .unwrap_or_else(eh3d_tool_manager::lang::Lang::from_env);
-    match eh3d_tool_manager::gui::run_shot(parsed.files.into_iter().next(), lang, request) {
+    match eh3d_tool_manager::gui::run_shot(
+        parsed.files.into_iter().next(),
+        lang,
+        parsed.tab.unwrap_or(Tab::Tools),
+        request,
+    ) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: the picture could not be taken: {e}");
@@ -42,7 +48,18 @@ fn main() -> ExitCode {
         return take_picture(&args);
     }
     let dir = data_dir();
-    match eh3d_tool_manager::gui::run(dir.clone()) {
+    let tab = match shot::parse_window_args(&args, 1) {
+        Ok(parsed) => parsed.tab.unwrap_or(Tab::Tools),
+        Err(e) => {
+            let _ = std::fs::create_dir_all(&dir);
+            let _ = std::fs::write(
+                dir.join("last_error.txt"),
+                format!("wrong arguments: {e}\n"),
+            );
+            return ExitCode::from(2);
+        }
+    };
+    match eh3d_tool_manager::gui::run(dir.clone(), tab) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             // there is no console to print to: the reason goes to a file the person can open

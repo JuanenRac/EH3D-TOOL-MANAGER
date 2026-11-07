@@ -652,8 +652,9 @@ fn apply_theme(ctx: &egui::Context, theme: ShotTheme) {
 }
 
 /// Opens the window for the program whose files are in `data_dir`. The size of the window, the language and the numbers of the calculator come from `tools.cfg` there.
-pub fn run(data_dir: PathBuf) -> eframe::Result {
-    let win = Window::new(data_dir);
+pub fn run(data_dir: PathBuf, tab: Tab) -> eframe::Result {
+    let mut win = Window::new(data_dir);
+    win.tab = tab;
     let size = [
         win.settings.window_width as f32,
         win.settings.window_height as f32,
@@ -755,7 +756,12 @@ fn save_shot_png(image: &egui::ColorImage, path: &Path, replace: bool) -> Result
 
 /// Opens the window at the size asked, shows the crib file, saves the picture as the request says and closes by itself. The window keeps no settings. The answer is the reason when the
 /// picture could not be written.
-pub fn run_shot(crib: Option<PathBuf>, lang: Lang, request: ShotRequest) -> Result<(), String> {
+pub fn run_shot(
+    crib: Option<PathBuf>,
+    lang: Lang,
+    tab: Tab,
+    request: ShotRequest,
+) -> Result<(), String> {
     if !request.replace && request.output.exists() {
         return Err(format!(
             "{} exists; give --replace to write over it",
@@ -776,7 +782,8 @@ pub fn run_shot(crib: Option<PathBuf>, lang: Lang, request: ShotRequest) -> Resu
     if let Some(missing) = crib.iter().find(|f| !f.is_file()) {
         return Err(format!("{} is not a file", missing.display()));
     }
-    let win = Window::for_shot(crib, lang);
+    let mut win = Window::for_shot(crib, lang);
+    win.tab = tab;
     let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size([request.size.0 as f32, request.size.1 as f32])
         .with_title(PROGRAM_NAME);

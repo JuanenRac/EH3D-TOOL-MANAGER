@@ -237,6 +237,24 @@ pub enum Tab {
     Calc,
 }
 
+impl Tab {
+    /// The word that names the page on the command line (`--tab`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Tab::Tools => "tools",
+            Tab::Calc => "calc",
+        }
+    }
+
+    /// The page a word names, in any case.
+    pub fn parse(text: &str) -> Option<Tab> {
+        let word = text.trim().to_ascii_lowercase();
+        [Tab::Tools, Tab::Calc]
+            .into_iter()
+            .find(|t| t.name() == word)
+    }
+}
+
 /// What the window last said to the person.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {

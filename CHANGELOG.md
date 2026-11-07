@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The window opens on the page you choose:** `eh3d-tools-gui --tab tools|calc` (also together with `--shot`) opens the window on the table of the tools or on the calculator of feeds and speeds; a page that is not one of the two is an error that names the two, and without `--tab` the window opens on the table as before. The picture of the calculator is `--shot calc.png --tab calc`. The word is read by plain code with its tests.
+
 ## [0.0.7] - Picture mode for the window and a sample drawer of tools
 
 - **The width of the cut of a V-bit by its angle:** `v_bit_width_mm` works out `2 x depth x tan(angle / 2) + flat` (a 60 degree bit at 0.5 mm: 0.5774 mm plus the flat of 0.1 mm = 0.6774 mm), with the angle from 10 to 170 degrees, the depth from 0 to 100 mm and the flat from 0 to 5 mm; every value out of its range is an error that names it. The command `eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]` prints it.
