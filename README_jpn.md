@@ -73,6 +73,14 @@ EH3D-TOOL-MANAGER は EH3D Fabrication Suite のプログラムの一つです�
 
 このリポジトリの各部分の関係：誰が使い、何を持ち、何に依存するか。図は `docs/architecture.json` から描かれ、コードと照合されます。
 
+## 🖼️ スクリーンショット
+
+<p align="center">
+  <img src="images/screens/tool-manager-01-tools.png" alt="サンプルの工具庫を開いた「工具」タブ" width="100%">
+</p>
+
+<p align="center"><em>サンプルの工具庫を開いた「工具」タブ：9本の工具の種類、サイズ、時間、穴数、摩耗と、新しい工具を追加するフォームを表示します。</em></p>
+
 ## ✨ 機能
 
 * **ライブラリとコマンドライン：** `eh3d-tools` の各コマンドはライブラリの関数なので、スイートの他のプログラムがプロセスを起動せずに呼び出せます。

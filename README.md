@@ -73,6 +73,14 @@ EH3D-TOOL-MANAGER is one program of the EH3D Fabrication Suite. It works as a li
 
 How the parts of this repository fit together: who uses it, what it holds and what it depends on. The picture is drawn from `docs/architecture.json` and checked against the code.
 
+## 🖼️ Screenshots
+
+<p align="center">
+  <img src="images/screens/tool-manager-01-tools.png" alt="The Tools tab with the example crib" width="100%">
+</p>
+
+<p align="center"><em>The Tools tab with the example crib: nine tools with their kind, size, hours, holes and wear, and the form to add a new one.</em></p>
+
 ## ✨ Features
 
 * **A library and a command line:** every command of `eh3d-tools` is a function of the library, so another program of the suite can call it without starting a process.

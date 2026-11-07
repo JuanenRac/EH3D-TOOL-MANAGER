@@ -73,6 +73,14 @@ EH3D-TOOL-MANAGER est un programme de l'EH3D Fabrication Suite. Il fonctionne co
 
 Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contient et de quoi il dépend. L'image est dessinée depuis `docs/architecture.json` et vérifiée avec le code.
 
+## 🖼️ Captures d'écran
+
+<p align="center">
+  <img src="images/screens/tool-manager-01-tools.png" alt="L'onglet Outils avec le magasin d'exemple" width="100%">
+</p>
+
+<p align="center"><em>L'onglet Outils avec le magasin d'exemple : neuf outils avec leur type, leur taille, leurs heures, leurs trous et leur usure, et le formulaire pour en ajouter un nouveau.</em></p>
+
 ## ✨ Fonctionnalités
 
 * **Une bibliothèque et une ligne de commande :** chaque commande de `eh3d-tools` est une fonction de la bibliothèque ; un autre programme de la suite peut l'appeler sans lancer de processus.

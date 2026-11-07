@@ -73,6 +73,14 @@ EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。它以库、命�
 
 本仓库各部分如何配合：谁使用它、它包含什么、它依赖什么。图由 `docs/architecture.json` 绘制并与代码核对。
 
+## 🖼️ 屏幕截图
+
+<p align="center">
+  <img src="images/screens/tool-manager-01-tools.png" alt="载入示例刀库的“工具”标签页" width="100%">
+</p>
+
+<p align="center"><em>载入示例刀库的“工具”标签页：九把工具及其类型、尺寸、工时、孔数和磨损，以及添加新工具的表单。</em></p>
+
 ## ✨ 功能
 
 * **库加命令行：** `eh3d-tools` 的每个命令都是库中的函数，套件中的其他程序无需启动进程即可调用。
