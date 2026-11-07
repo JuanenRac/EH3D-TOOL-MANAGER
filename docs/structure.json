@@ -67,6 +67,19 @@
           }
         },
         {
+          "name": "files.rs",
+          "desc": {
+            "en": "files read with a size limit, written through a temporary file",
+            "es": "ficheros leídos con límite de tamaño y escritos por un temporal",
+            "de": "Dateien mit Größenlimit lesen, über eine temporäre schreiben",
+            "fr": "fichiers lus avec limite de taille, écrits par un temporaire",
+            "it": "file letti con limite di dimensione, scritti tramite temporaneo",
+            "ja": "サイズ上限付きの読み込みと一時ファイル経由の書き込み",
+            "zh": "带大小上限的读取和经临时文件的写入",
+            "pt": "ficheiros lidos com limite de tamanho, escritos por um temporário"
+          }
+        },
+        {
           "name": "gui.rs",
           "desc": {
             "en": "the window (egui, with the gui feature): draws the state and passes on what the person does",
@@ -214,6 +227,19 @@
             "ja": "ライブラリとコマンドラインのテスト",
             "zh": "库和命令行的测试",
             "pt": "testes da biblioteca e da linha de comandos"
+          }
+        },
+        {
+          "name": "files.rs",
+          "desc": {
+            "en": "tests of the size limit and of the atomic write of the files",
+            "es": "pruebas del límite de tamaño y de la escritura atómica de los ficheros",
+            "de": "Tests des Größenlimits und des atomaren Schreibens der Dateien",
+            "fr": "tests de la limite de taille et de l'écriture atomique des fichiers",
+            "it": "test del limite di dimensione e della scrittura atomica dei file",
+            "ja": "サイズ上限とファイルのアトミックな書き込みのテスト",
+            "zh": "文件大小上限和原子写入的测试",
+            "pt": "testes do limite de tamanho e da escrita atómica dos ficheiros"
           }
         },
         {

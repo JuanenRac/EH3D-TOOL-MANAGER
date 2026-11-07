@@ -1,8 +1,9 @@
 //! The crib as a JSON document (`{"schema_version":1,"tools":[...]}`), read with care.
 
+use crate::files;
 use crate::model::{Crib, Kind, Tool};
+use crate::settings::DEFAULT_MAX_FILE_MIB;
 use serde_json::{json, Value};
-use std::fs;
 use std::path::Path;
 
 pub const SCHEMA_VERSION: u64 = 1;
@@ -142,20 +143,15 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
 
 /// Writes the crib to a temporary file beside the real one and renames it over the real one, so that a cut or a full disk leaves the old crib whole.
 pub fn save(crib: &Crib, file: &Path) -> Result<(), String> {
-    let mut tmp = file.as_os_str().to_owned();
-    tmp.push(".tmp");
-    let tmp = std::path::PathBuf::from(tmp);
-    let fail = |e: std::io::Error| format!("{}: {e}", file.display());
-    if let Err(e) = fs::write(&tmp, to_json(crib)) {
-        let _ = fs::remove_file(&tmp);
-        return Err(fail(e));
-    }
-    fs::rename(&tmp, file).map_err(|e| {
-        let _ = fs::remove_file(&tmp);
-        fail(e)
-    })
+    files::write_atomic(file, to_json(crib).as_bytes())
 }
 
+/// The crib of a file that is not larger than `max_mib` MiB (`max_file_mib` of `tools.cfg`).
+pub fn load_with_limit(file: &Path, max_mib: u64) -> Result<Crib, String> {
+    from_json(&files::read_text_limited(file, files::mib(max_mib))?)
+}
+
+/// The crib of a file, with the size limit that `tools.cfg` has by default.
 pub fn load(file: &Path) -> Result<Crib, String> {
-    from_json(&fs::read_to_string(file).map_err(|e| format!("{}: {e}", file.display()))?)
+    load_with_limit(file, DEFAULT_MAX_FILE_MIB)
 }

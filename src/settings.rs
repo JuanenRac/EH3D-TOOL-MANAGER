@@ -7,6 +7,7 @@ use crate::calc::{
     PASS_FRACTION_LIMITS, PLUNGE_RATIO_LIMITS, SURFACE_SPEED_LIMITS, V_BIT_ANGLE_LIMITS,
     V_BIT_FLAT_LIMITS, WORKING_LIMITS,
 };
+use crate::files;
 use crate::lang::Lang;
 use std::path::{Path, PathBuf};
 
@@ -16,10 +17,15 @@ pub const CONFIG_FILE: &str = "tools.cfg";
 pub const DEFAULT_WINDOW_WIDTH: u32 = 1200;
 pub const DEFAULT_WINDOW_HEIGHT: u32 = 760;
 pub const DEFAULT_MAX_RPM: f64 = 24000.0;
+/// The largest crib or CSV file that is read, in MiB.
+pub const DEFAULT_MAX_FILE_MIB: u64 = 16;
+/// The largest `tools.cfg` that is read, in bytes.
+pub const MAX_CONFIG_BYTES: u64 = 1_048_576;
 /// The limits a value of the file may have.
 pub const MIN_WINDOW: (u32, u32) = (720, 480);
 pub const MAX_WINDOW: (u32, u32) = (7680, 4320);
 pub const MAX_RPM_LIMITS: (f64, f64) = (1000.0, 400_000.0);
+pub const MAX_FILE_MIB_LIMITS: (u32, u32) = (1, 1024);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {
@@ -31,6 +37,8 @@ pub struct Settings {
     pub crib_file: Option<PathBuf>,
     /// The speed of the spindle the calculator starts with.
     pub default_max_rpm: f64,
+    /// The largest crib or CSV file that is read, in MiB; a bigger one is refused with the code `file_too_large`.
+    pub max_file_mib: u64,
     pub params: CalcParams,
 }
 
@@ -42,6 +50,7 @@ impl Default for Settings {
             window_height: DEFAULT_WINDOW_HEIGHT,
             crib_file: None,
             default_max_rpm: DEFAULT_MAX_RPM,
+            max_file_mib: DEFAULT_MAX_FILE_MIB,
             params: CalcParams::default(),
         }
     }
@@ -141,6 +150,9 @@ impl Settings {
                 "default_max_rpm" => {
                     s.default_max_rpm = float(line, key, value, MAX_RPM_LIMITS)?;
                 }
+                "max_file_mib" => {
+                    s.max_file_mib = u64::from(whole(line, key, value, MAX_FILE_MIB_LIMITS)?);
+                }
                 "working_min_mm" => p.working_min_mm = float(line, key, value, WORKING_LIMITS)?,
                 "working_max_mm" => p.working_max_mm = float(line, key, value, WORKING_LIMITS)?,
                 "min_working_mm" => p.min_working_mm = float(line, key, value, WORKING_LIMITS)?,
@@ -175,11 +187,10 @@ impl Settings {
     /// Reads `tools.cfg` in `dir`; a file that is not there means the defaults.
     pub fn load(dir: &Path) -> Result<Settings, String> {
         let file = dir.join(CONFIG_FILE);
-        match std::fs::read_to_string(&file) {
-            Ok(text) => Settings::parse(&text),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Settings::default()),
-            Err(e) => Err(format!("{}: {e}", file.display())),
+        if !file.exists() {
+            return Ok(Settings::default());
         }
+        Settings::parse(&files::read_text_limited(&file, MAX_CONFIG_BYTES)?)
     }
 }
 
@@ -293,5 +304,34 @@ v_bit_angle_deg = 175",
             e.contains("line 3") && e.contains("10") && e.contains("170"),
             "{e}"
         );
+    }
+
+    #[test]
+    fn the_limit_of_the_files_is_read_and_has_its_limits() {
+        assert_eq!(Settings::default().max_file_mib, 16);
+        assert_eq!(
+            Settings::parse("max_file_mib = 64").unwrap().max_file_mib,
+            64
+        );
+        assert!(Settings::parse(
+            "max_file_mib = 1
+max_file_mib = 1024"
+        )
+        .is_ok());
+        for bad in [
+            "max_file_mib = 0",
+            "max_file_mib = 1025",
+            "max_file_mib = big",
+        ] {
+            let e = Settings::parse(bad).unwrap_err();
+            assert!(e.contains("max_file_mib") && e.contains("1 to 1024"), "{e}");
+        }
+    }
+
+    #[test]
+    fn the_sample_file_has_the_default_values() {
+        let sample = include_str!("../tools.cfg.example");
+        assert_eq!(Settings::parse(sample).unwrap(), Settings::default());
+        assert!(sample.contains("max_file_mib = 16"));
     }
 }

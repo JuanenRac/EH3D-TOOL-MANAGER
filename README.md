@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 139 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 147 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.7` |
 | Maturity | Scaffolding |
-| Tests | 139 |
+| Tests | 147 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 139 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
+| Tests | 🟡 | 147 tests pass (`cargo test`), with normal cases, edge cases and damaged input. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-tools-gui`): a table of the tools that are added, changed and removed with the checks of the command line, filters and search, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows its formulas and conditions; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -78,6 +78,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **A library and a command line:** every command of `eh3d-tools` is a function of the library, so another program of the suite can call it without starting a process.
 * **Tests with damaged input:** the tests also feed empty files, garbage, huge numbers and cut files, and none of them may panic.
 * **No guessing:** a value that does not make sense is an error that says which value and why, never a result that only looks right.
+* **Size limit and atomic write of the files:** the crib and the CSV table are read only when they are not larger than `max_file_mib` of `tools.cfg` (16 MiB by default, 1 to 1024), in the command line and in the window; a bigger file is refused with the code `file_too_large` and its name, a file that cannot be read with `file_unreadable` and one that is not text with `file_not_text`, and nothing is loaded. The crib and the CSV table are written to a temporary file beside the real one and renamed over it, so that a cut or a full disk leaves the old file whole (`file_unwritable` and the temporary file removed when it fails); the CSV export still never replaces a file unless the person says so.
 * **No unsafe code:** `#![forbid(unsafe_code)]` in the library and the program.
 * **A crib that holds up:** the number of a removed tool is never given again (the crib keeps `next_id`), an id that is not a whole number is told as such, the CSV refuses text after a closing quote, a text that starts like a formula (`=`, `+`, `-`, `@`) is written as text so a spreadsheet does not run it, the material has a limit, `--holes` is a whole number, an unknown option is an error, and `calc` says that the result for a V-bit or an engraver is only a starting point.
 * **The width of the cut of a V-bit:** `eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]` works out `2 x depth x tan(angle / 2) + flat` (a 60 degree bit at 0.5 mm makes 0.5774 mm plus the flat of 0.1 mm = 0.6774 mm); the angle is 10 to 170 degrees, the depth 0 to 100 mm and the flat 0 to 5 mm, and what is not given is the value of `tools.cfg`. `calc --depth MM` uses that width as the diameter a V-bit or an engraver works with in the feeds and speeds, and the calculator of the window has a field for the depth, shows the width of the cut and the formula with its numbers; without a depth the numbers are the ones of always.
@@ -102,6 +103,7 @@ EH3D-TOOL-MANAGER/
 │   ├── calc.rs                                  a part of the logic
 │   ├── cli_args.rs                              the arguments of the command line, read strictly
 │   ├── csv.rs                                   a part of the logic
+│   ├── files.rs                                 files read with a size limit, written through a temporary file
 │   ├── gui.rs                                   the window (egui, with the gui feature): draws the state and passes on what the person does
 │   ├── gui_main.rs                              the window as a program of its own, without a console on Windows
 │   ├── lang.rs                                  the words of the window in the eight languages
@@ -114,6 +116,7 @@ EH3D-TOOL-MANAGER/
 │   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
 ├── tests/
 │   ├── crib.rs                                  tests of the library and the command line
+│   ├── files.rs                                 tests of the size limit and of the atomic write of the files
 │   ├── shot_sample.rs                           tests of the sample crib and of the window of a picture
 │   └── vbit.rs                                  tests of the width of the cut of a V-bit: the command, the depth in calc and the settings
 ├── examples/
@@ -155,7 +158,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 139 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 147 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

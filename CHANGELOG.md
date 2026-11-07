@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The files are read with a size limit and written whole:** the crib and the CSV table are read (command line `show`, `add`, `export-csv`, `import-csv` and so on, and the window) only when they are not larger than the new key `max_file_mib` of `tools.cfg` (16 MiB by default, 1 to 1024, listed in `tools.cfg.example`, which a test keeps equal to the defaults); `tools.cfg` itself is read up to 1 MiB. A refusal starts with a code that does not change (`file_too_large`, `file_unreadable`, `file_not_text`) followed by the file name, and at most one byte more than the limit is ever read. The CSV export of the window now goes through a temporary file that is renamed over the target, as the crib already did (`files::write_atomic`, shared by both), so a cut or a full disk leaves the old file whole; a failure is `file_unwritable` and removes the temporary file, and a file is still replaced only when the person says so. Tests in `tests/files.rs`, `settings.rs` and `window.rs`.
 - **The window opens on the page you choose:** `eh3d-tools-gui --tab tools|calc` (also together with `--shot`) opens the window on the table of the tools or on the calculator of feeds and speeds; a page that is not one of the two is an error that names the two, and without `--tab` the window opens on the table as before. The picture of the calculator is `--shot calc.png --tab calc`. The word is read by plain code with its tests.
 
 ## [0.0.7] - Picture mode for the window and a sample drawer of tools

@@ -3,6 +3,7 @@
 //! of the library) and an error is the message of the library.
 
 use crate::calc::{feeds_speeds_traced_at, CalcParams, Cut, Material, Trace};
+use crate::files;
 use crate::lang::{fill, Lang, Msg};
 use crate::model::{Crib, Kind, Tool, Wear};
 use crate::settings::Settings;
@@ -680,7 +681,7 @@ impl Window {
             self.status = Status::NeedFile;
             return;
         };
-        match store::load(&file) {
+        match store::load_with_limit(&file, self.settings.max_file_mib) {
             Ok(crib) => {
                 self.crib = crib;
                 self.forget_choice();
@@ -739,10 +740,10 @@ impl Window {
             self.status = Status::NeedFile;
             return;
         };
-        let text = match std::fs::read_to_string(&file) {
+        let text = match files::read_text_limited(&file, files::mib(self.settings.max_file_mib)) {
             Ok(t) => t,
             Err(e) => {
-                self.fail(format!("{}: {e}", file.display()));
+                self.fail(e);
                 return;
             }
         };
@@ -774,14 +775,14 @@ impl Window {
             };
             return;
         }
-        match std::fs::write(&file, csv::to_csv(&self.crib)) {
+        match files::write_atomic(&file, csv::to_csv(&self.crib).as_bytes()) {
             Ok(()) => {
                 self.status = Status::Exported {
                     file: file.display().to_string(),
                     tools: self.crib.tools.len(),
                 };
             }
-            Err(e) => self.fail(format!("{}: {e}", file.display())),
+            Err(e) => self.fail(e),
         }
     }
 
@@ -1329,6 +1330,45 @@ mod tests {
         assert!(std::fs::read_to_string(dir.join("out.csv"))
             .unwrap()
             .starts_with(csv::HEADER));
+    }
+
+    #[test]
+    fn a_csv_or_a_crib_over_the_limit_of_the_settings_is_refused_with_its_code() {
+        let mut w = window("limit");
+        let dir = w.data_dir.clone();
+        w.settings.max_file_mib = 1;
+        w.csv_text = dir.join("big.csv").display().to_string();
+        std::fs::write(&w.csv_text, vec![b'a'; 1_048_577]).unwrap();
+        w.import_csv();
+        assert!(
+            matches!(&w.status, Status::Failed(e) if e.starts_with("file_too_large: ") && e.contains("big.csv"))
+        );
+        assert!(w.crib.tools.is_empty());
+        w.file_text = w.csv_text.clone();
+        w.open();
+        assert!(matches!(&w.status, Status::Failed(e) if e.starts_with("file_too_large: ")));
+        w.settings.max_file_mib = 2;
+        w.open();
+        assert!(matches!(&w.status, Status::Failed(e) if !e.starts_with("file_too_large")));
+    }
+
+    #[test]
+    fn the_csv_is_written_through_a_temporary_file_that_is_never_left_behind() {
+        let mut w = window("atomic");
+        let dir = w.data_dir.clone();
+        add(&mut w, "A", Kind::Drill, "0.8");
+        w.csv_text = dir.join("out.csv").display().to_string();
+        w.export_csv();
+        assert!(matches!(&w.status, Status::Exported { tools: 1, .. }));
+        assert!(!dir.join("out.csv.tmp").exists());
+        // a place that cannot be replaced (a folder) leaves what is there and no temporary file
+        std::fs::create_dir_all(dir.join("folder.csv")).unwrap();
+        w.csv_text = dir.join("folder.csv").display().to_string();
+        w.overwrite_csv = true;
+        w.export_csv();
+        assert!(matches!(&w.status, Status::Failed(e) if e.starts_with("file_unwritable: ")));
+        assert!(dir.join("folder.csv").is_dir());
+        assert!(!dir.join("folder.csv.tmp").exists());
     }
 
     #[test]

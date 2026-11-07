@@ -7,7 +7,7 @@ mod cli_args;
 use eh3d_tool_manager::calc::{feeds_speeds_traced_at, v_bit_width_mm, Material};
 use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear};
 use eh3d_tool_manager::settings::{data_dir, Settings};
-use eh3d_tool_manager::{csv, store};
+use eh3d_tool_manager::{csv, files, store};
 use std::env;
 use std::path::Path;
 use std::process::ExitCode;
@@ -53,6 +53,11 @@ fn describe(w: Wear) -> String {
     }
 }
 
+/// The largest crib or CSV file that is read: `max_file_mib` of `tools.cfg`.
+fn max_mib() -> Result<u64, String> {
+    Ok(Settings::load(&data_dir())?.max_file_mib)
+}
+
 fn run(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
         println!("{HELP}");
@@ -86,7 +91,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 4, "a file, a name, a kind and a diameter")?;
             cli_args::finish(&args, 4)?;
             let file = Path::new(&args[0]);
-            let mut crib = store::load(file)?;
+            let mut crib = store::load_with_limit(file, max_mib()?)?;
             let diameter = args[3]
                 .parse::<f64>()
                 .map_err(|_| format!("the diameter '{}' is not a number", args[3]))?;
@@ -105,7 +110,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "list" => {
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;
-            for t in &store::load(Path::new(&args[0]))?.tools {
+            for t in &store::load_with_limit(Path::new(&args[0]), max_mib()?)?.tools {
                 println!(
                     "{:>3}  {:<24} {:<9} {:>6.3} mm  {:>2} flutes  {:>7.1} h  {:>7} holes  {}",
                     t.id,
@@ -130,7 +135,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Err(format!("--holes {holes} is not a count of holes"));
             }
             let file = Path::new(&args[0]);
-            let mut crib = store::load(file)?;
+            let mut crib = store::load_with_limit(file, max_mib()?)?;
             let id = args[1]
                 .parse::<u32>()
                 .map_err(|_| format!("'{}' is not a tool number", args[1]))?;
@@ -142,7 +147,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "wear" => {
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;
-            let crib = store::load(Path::new(&args[0]))?;
+            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
             let list = crib.to_replace();
             if list.is_empty() {
                 println!("no tool is worn");
@@ -155,14 +160,16 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "export-csv" => {
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;
-            print!("{}", csv::to_csv(&store::load(Path::new(&args[0]))?));
+            print!(
+                "{}",
+                csv::to_csv(&store::load_with_limit(Path::new(&args[0]), max_mib()?)?)
+            );
             Ok(())
         }
         "import-csv" => {
             need(&args, 2, "a crib file and a CSV table")?;
             cli_args::finish(&args, 2)?;
-            let text =
-                std::fs::read_to_string(&args[1]).map_err(|e| format!("{}: {e}", args[1]))?;
+            let text = files::read_text_limited(Path::new(&args[1]), files::mib(max_mib()?))?;
             let crib = csv::from_csv(&text)?;
             // the table that was there is kept beside the new one: an import replaces it
             let target = Path::new(&args[0]);

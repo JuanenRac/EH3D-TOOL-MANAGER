@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 139 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 147 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.7` |
 | Maturità | Impalcatura |
-| Test | 139 |
+| Test | 147 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-tools` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 139 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
+| Test | 🟡 | 147 test passano (`cargo test`), con casi normali, casi limite e input danneggiati. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`, programma `eh3d-tools-gui`): una tabella degli utensili che si aggiungono, modificano e rimuovono con i controlli della riga di comando, filtri e ricerca, importazione ed esportazione CSV con gli errori della libreria e un calcolatore di avanzamenti e velocità che mostra formule e condizioni; la sua logica è testata, ma non è ancora stata compilata né guardata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -78,6 +78,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Libreria e riga di comando:** ogni comando di `eh3d-tools` è una funzione della libreria, così un altro programma della suite può chiamarla senza avviare un processo.
 * **Test con input danneggiati:** i test forniscono anche file vuoti, spazzatura, numeri enormi e file tagliati, e nessuno può andare in panico.
 * **Nessuna ipotesi:** un valore privo di senso è un errore che dice quale e perché, mai un risultato che sembra solo giusto.
+* **Limite di dimensione e scrittura atomica dei file:** il file degli utensili e la tabella CSV si leggono solo se non superano `max_file_mib` di `tools.cfg` (16 MiB di default, da 1 a 1024), nella riga di comando e nella finestra; un file più grande è rifiutato con il codice `file_too_large` e il suo nome, uno illeggibile con `file_unreadable` e uno che non è testo con `file_not_text`, e non si carica nulla. Il file degli utensili e la tabella CSV si scrivono in un file temporaneo accanto a quello vero e vi si rinominano sopra, così un'interruzione o un disco pieno lasciano intero il file precedente (`file_unwritable` e il temporaneo viene rimosso se fallisce); l'esportazione CSV non sostituisce mai un file se la persona non lo dice.
 * **Nessun codice unsafe:** `#![forbid(unsafe_code)]` nella libreria e nel programma.
 * **Un magazzino che regge:** il numero di un utensile rimosso non viene più riassegnato (il magazzino conserva `next_id`), un id che non è un numero intero viene indicato come tale, il CSV rifiuta testo dopo le virgolette di chiusura, un testo che inizia come una formula (`=`, `+`, `-`, `@`) viene scritto come testo perché il foglio di calcolo non lo esegua, il materiale ha un limite, `--holes` è un numero intero, un'opzione sconosciuta è un errore e `calc` dice che il risultato per una fresa a V o un incisore è solo un punto di partenza.
 * **La larghezza del taglio di una fresa a V:** `eh3d-tools vbit --depth MM [--angle GRADI] [--flat MM]` calcola `2 x profondità x tan(angolo / 2) + punta piatta` (una fresa da 60 gradi a 0,5 mm dà 0,5774 mm più la punta piatta di 0,1 mm = 0,6774 mm); l'angolo va da 10 a 170 gradi, la profondità da 0 a 100 mm e la punta piatta da 0 a 5 mm, e ciò che non viene indicato è il valore di `tools.cfg`. `calc --depth MM` usa questa larghezza come diametro con cui lavora una fresa a V o un incisore negli avanzamenti e velocità, e il calcolatore della finestra ha un campo per la profondità, mostra la larghezza del taglio e la formula con i suoi numeri; senza profondità i numeri sono quelli di sempre.
@@ -102,6 +103,7 @@ EH3D-TOOL-MANAGER/
 │   ├── calc.rs                                  una parte della logica
 │   ├── cli_args.rs                              gli argomenti della riga di comando, letti con rigore
 │   ├── csv.rs                                   una parte della logica
+│   ├── files.rs                                 file letti con limite di dimensione, scritti tramite temporaneo
 │   ├── gui.rs                                   la finestra (egui, con la funzione gui): disegna lo stato e inoltra ciò che fa la persona
 │   ├── gui_main.rs                              la finestra come programma a sé, senza console su Windows
 │   ├── lang.rs                                  le parole della finestra nelle otto lingue
@@ -114,6 +116,7 @@ EH3D-TOOL-MANAGER/
 │   └── window.rs                                lo stato della finestra senza schermo: il magazzino, il modulo, i filtri e il calcolatore
 ├── tests/
 │   ├── crib.rs                                  test della libreria e della riga di comando
+│   ├── files.rs                                 test del limite di dimensione e della scrittura atomica dei file
 │   ├── shot_sample.rs                           test della cassetta di esempio e della finestra di un'immagine
 │   └── vbit.rs                                  test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni
 ├── examples/
@@ -155,7 +158,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 139 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 147 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

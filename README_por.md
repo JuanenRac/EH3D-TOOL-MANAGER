@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 139 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 147 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.0.7` |
 | Maturidade | Estrutura inicial |
-| Testes | 139 |
+| Testes | 147 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -47,7 +47,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 |---|---|---|
 | Núcleo | 🟡 | guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material; testado num computador com entradas normais e danificadas, não com uma coleção de ficheiros reais. |
 | Linha de comandos | 🟡 | `eh3d-tools` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 139 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
+| Testes | 🟡 | 147 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-tools-gui`): uma tabela das ferramentas que se adicionam, alteram e removem com as verificações da linha de comandos, filtros e pesquisa, importação e exportação de CSV com os erros da biblioteca e uma calculadora de avanços e velocidades que mostra as suas fórmulas e condições; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -78,6 +78,7 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 * **Biblioteca e linha de comandos:** cada comando de `eh3d-tools` é uma função da biblioteca, por isso outro programa da suíte pode chamá-la sem lançar um processo.
 * **Testes com entradas danificadas:** os testes também dão ficheiros vazios, lixo, números enormes e ficheiros cortados, e nenhum pode entrar em pânico.
 * **Sem adivinhar:** um valor sem sentido é um erro que diz qual e porquê, nunca um resultado que apenas parece certo.
+* **Limite de tamanho e escrita atómica dos ficheiros:** o ficheiro de ferramentas e a tabela CSV só são lidos se não forem maiores do que `max_file_mib` de `tools.cfg` (16 MiB por predefinição, de 1 a 1024), na linha de comandos e na janela; um ficheiro maior é recusado com o código `file_too_large` e o seu nome, um que não se consegue ler com `file_unreadable` e um que não é texto com `file_not_text`, e não se carrega nada. O ficheiro de ferramentas e a tabela CSV são escritos num ficheiro temporário junto ao verdadeiro e renomeados por cima, de modo que um corte ou um disco cheio deixam o ficheiro anterior inteiro (`file_unwritable` e o temporário é removido se falhar); a exportação CSV continua a nunca substituir um ficheiro sem a pessoa o dizer.
 * **Sem código unsafe:** `#![forbid(unsafe_code)]` na biblioteca e no programa.
 * **Um armazém que aguenta:** o número de uma ferramenta retirada nunca volta a ser dado (o armazém guarda `next_id`), um id que não é um número inteiro diz-se como tal, o CSV recusa texto depois de umas aspas de fecho, um texto que começa como uma fórmula (`=`, `+`, `-`, `@`) escreve-se como texto para que a folha de cálculo não o execute, o material tem um limite, `--holes` é um número inteiro, uma opção desconhecida é um erro e `calc` diz que o resultado de uma fresa em V ou de um gravador é só um ponto de partida.
 * **A largura do corte de uma fresa em V:** `eh3d-tools vbit --depth MM [--angle GRAUS] [--flat MM]` calcula `2 x profundidade x tan(ângulo / 2) + ponta plana` (uma fresa de 60 graus a 0,5 mm dá 0,5774 mm mais a ponta plana de 0,1 mm = 0,6774 mm); o ângulo vai de 10 a 170 graus, a profundidade de 0 a 100 mm e a ponta plana de 0 a 5 mm, e o que não for indicado é o valor de `tools.cfg`. `calc --depth MM` usa essa largura como o diâmetro com que uma fresa em V ou um gravador trabalha nos avanços e velocidades, e a calculadora da janela tem um campo para a profundidade, mostra a largura do corte e a fórmula com os seus números; sem profundidade os números são os de sempre.
@@ -102,6 +103,7 @@ EH3D-TOOL-MANAGER/
 │   ├── calc.rs                                  uma parte da lógica
 │   ├── cli_args.rs                              os argumentos da linha de comandos, lidos com rigor
 │   ├── csv.rs                                   uma parte da lógica
+│   ├── files.rs                                 ficheiros lidos com limite de tamanho, escritos por um temporário
 │   ├── gui.rs                                   a janela (egui, com a funcionalidade gui): desenha o estado e transmite o que a pessoa faz
 │   ├── gui_main.rs                              a janela como programa à parte, sem consola no Windows
 │   ├── lang.rs                                  as palavras da janela nos oito idiomas
@@ -114,6 +116,7 @@ EH3D-TOOL-MANAGER/
 │   └── window.rs                                o estado da janela sem ecrã: o armazém, o formulário, os filtros e a calculadora
 ├── tests/
 │   ├── crib.rs                                  testes da biblioteca e da linha de comandos
+│   ├── files.rs                                 testes do limite de tamanho e da escrita atómica dos ficheiros
 │   ├── shot_sample.rs                           testes da caixa de ferramentas de exemplo e da janela de uma captura
 │   └── vbit.rs                                  testes da largura do corte de uma fresa em V: o comando, a profundidade em calc e as definições
 ├── examples/
@@ -155,7 +158,7 @@ Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICH
 
 ## 🧪 Testes
 
-O conjunto tem 139 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 147 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 

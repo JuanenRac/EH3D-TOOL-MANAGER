@@ -6,6 +6,7 @@
 
 pub mod calc;
 pub mod csv;
+pub mod files;
 #[cfg(feature = "gui")]
 pub mod gui;
 pub mod lang;
