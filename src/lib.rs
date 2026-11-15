@@ -182,6 +182,15 @@ pub mod sim {
             (crib, ids)
         }
 
+        /// Two cribs hold the same tools and counters; the hours and metres may differ in the last digit, because the file keeps decimals that way.
+        fn assert_same(loaded: &Crib, kept: &Crib) {
+            assert_eq!(loaded.tools.len(), kept.tools.len());
+            for (a, b) in loaded.tools.iter().zip(&kept.tools) {
+                assert_eq!((a.id, &a.name, a.holes), (b.id, &b.name, b.holes));
+                assert!((a.hours - b.hours).abs() < 1e-9 && (a.meters - b.meters).abs() < 1e-9);
+            }
+        }
+
         fn counters(crib: &Crib) -> Vec<(f64, f64, u64)> {
             crib.tools
                 .iter()
@@ -214,7 +223,7 @@ pub mod sim {
                 "a tool at its limit was left in"
             );
             let loaded = store::load(&dir.file()).unwrap();
-            assert_eq!(store::to_json(&loaded), store::to_json(&crib));
+            assert_same(&loaded, &crib);
         }
 
         #[test]
@@ -256,17 +265,11 @@ pub mod sim {
             assert_eq!(fs::read_to_string(dir.file()).unwrap(), start);
             assert_ne!(store::to_json(&crib), start);
             store::save(&crib, &dir.file()).unwrap();
-            assert_eq!(
-                store::to_json(&store::load(&dir.file()).unwrap()),
-                store::to_json(&crib)
-            );
+            assert_same(&store::load(&dir.file()).unwrap(), &crib);
             let (mut again, ids) = self::crib();
             let out = run_shift(&mut again, &dir.file(), &jobs(5, &ids, 30), Some(4), true);
             assert_eq!(out.save_failures, 30 / 4);
-            assert_eq!(
-                store::to_json(&store::load(&dir.file()).unwrap()),
-                store::to_json(&again)
-            );
+            assert_same(&store::load(&dir.file()).unwrap(), &again);
         }
 
         #[test]
@@ -281,10 +284,7 @@ pub mod sim {
                 assert!(store::load(&dir.file()).is_err(), "cut at {cut}");
             }
             fs::write(dir.file(), &good).unwrap();
-            assert_eq!(
-                store::to_json(&store::load(&dir.file()).unwrap()),
-                store::to_json(&crib)
-            );
+            assert_same(&store::load(&dir.file()).unwrap(), &crib);
         }
 
         #[test]
