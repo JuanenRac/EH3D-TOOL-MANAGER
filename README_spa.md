@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| Versión | `0.0.7` |
+| Versión | `0.0.8` |
 | Madurez | Andamiaje |
 | Pruebas | 147 |
 | Pila tecnológica | Rust |
@@ -80,6 +80,12 @@ Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de 
 </p>
 
 <p align="center"><em>La pestaña Herramientas con el almacén de ejemplo: nueve herramientas con su tipo, medida, horas, taladros y desgaste, y el formulario para añadir una nueva.</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="La pestaña de avances y velocidades con una broca del almacén de ejemplo" width="100%">
+</p>
+
+<p align="center"><em>La pestaña de avances y velocidades abierta con `--tab calc`: la velocidad, el avance, la penetración y la profundidad de pasada para una broca de 0,8 mm en FR4, con la fórmula de cada número y la nota de que el husillo limita la velocidad.</em></p>
 
 ## ✨ Funciones
 

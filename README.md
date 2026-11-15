@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| Version | `0.0.7` |
+| Version | `0.0.8` |
 | Maturity | Scaffolding |
 | Tests | 147 |
 | Stack | Rust |
@@ -80,6 +80,12 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 </p>
 
 <p align="center"><em>The Tools tab with the example crib: nine tools with their kind, size, hours, holes and wear, and the form to add a new one.</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="The Feeds and speeds tab with a drill of the example crib" width="100%">
+</p>
+
+<p align="center"><em>The Feeds and speeds tab opened with `--tab calc`: the speed, feed, plunge and depth of a pass for a 0.8 mm drill in FR4, with the formula of every number and the note that the spindle limits the speed.</em></p>
 
 ## ✨ Features
 

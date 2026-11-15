@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| Versão | `0.0.7` |
+| Versão | `0.0.8` |
 | Maturidade | Estrutura inicial |
 | Testes | 147 |
 | Tecnologias | Rust |
@@ -80,6 +80,12 @@ Como as partes deste repositório se encaixam: quem o usa, o que contém e de qu
 </p>
 
 <p align="center"><em>O separador Ferramentas com o armazém de exemplo: nove ferramentas com o seu tipo, medida, horas, furos e desgaste, e o formulário para adicionar uma nova.</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="O separador Avanços e velocidades com uma broca do armazém de exemplo" width="100%">
+</p>
+
+<p align="center"><em>O separador Avanços e velocidades aberto com `--tab calc`: a velocidade, o avanço, a penetração e a profundidade de passagem para uma broca de 0,8 mm em FR4, com a fórmula de cada número e a nota de que o fuso limita a velocidade.</em></p>
 
 ## ✨ Funcionalidades
 

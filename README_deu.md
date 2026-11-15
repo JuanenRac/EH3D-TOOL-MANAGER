@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| Version | `0.0.7` |
+| Version | `0.0.8` |
 | Reifegrad | Gerüst |
 | Tests | 147 |
 | Technologie-Stack | Rust |
@@ -80,6 +80,12 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 </p>
 
 <p align="center"><em>Der Reiter Werkzeuge mit dem Beispiel-Magazin: neun Werkzeuge mit Art, Größe, Stunden, Bohrungen und Verschleiß sowie das Formular für ein neues Werkzeug.</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="Der Reiter Vorschübe und Drehzahlen mit einem Bohrer des Beispiel-Magazins" width="100%">
+</p>
+
+<p align="center"><em>Der Reiter Vorschübe und Drehzahlen, geöffnet mit `--tab calc`: Drehzahl, Vorschub, Eintauchen und Zustelltiefe für einen 0,8-mm-Bohrer in FR4, mit der Formel jeder Zahl und dem Hinweis, dass die Spindel die Drehzahl begrenzt.</em></p>
 
 ## ✨ Funktionen
 
