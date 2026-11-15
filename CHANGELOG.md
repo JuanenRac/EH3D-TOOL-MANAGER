@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.0.8] - A size limit for the files read, a window that opens on the page you choose and shared validation tools
+
+- **Renewed pictures in the README:** the picture of the Tools tab is taken again with the program built from this version and a second one shows the Feeds and speeds tab (`--tab calc`), both in the eight READMEs.
 - **The shared validation tools are updated:** the validator also runs the workflow and lessons checks of the suite with their latest rules, including a check to run before every push.
 - **The CI validation checks the workflows and the lessons of past CI failures against a baseline:** `tools/workflow_hygiene.py` and `tools/lessons_lint.py` (copies of the shared tools) run in the validation, and only findings that are not in `tools/workflow_hygiene_baseline.json` and `tools/lessons_lint_baseline.json` fail it, so what exists today stays as it is and a new one is caught. `python tools/workflow_hygiene.py --root . --detail` and `python tools/lessons_lint.py --repo .` list the findings.
 - A screenshot of the Tools tab in the README, taken with the published program and the example crib.

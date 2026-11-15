@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| 版本 | `0.0.7` |
+| 版本 | `0.0.8` |
 | 成熟度 | 脚手架 |
 | 测试 | 147 |
 | 技术栈 | Rust |
@@ -80,6 +80,12 @@ EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。它以库、命�
 </p>
 
 <p align="center"><em>载入示例刀库的“工具”标签页：九把工具及其类型、尺寸、工时、孔数和磨损，以及添加新工具的表单。</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="载入示例刀库中一支钻头的“进给与转速”标签页" width="100%">
+</p>
+
+<p align="center"><em>用 `--tab calc` 打开的“进给与转速”标签页：FR4 板上 0.8 mm 钻头的转速、进给、下刀和每刀深度，附每个数字的公式，并注明主轴限制了转速。</em></p>
 
 ## ✨ 功能
 

@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| Versione | `0.0.7` |
+| Versione | `0.0.8` |
 | Maturità | Impalcatura |
 | Test | 147 |
 | Stack tecnologico | Rust |
@@ -80,6 +80,12 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 </p>
 
 <p align="center"><em>La scheda Utensili con il magazzino di esempio: nove utensili con tipo, misura, ore, fori e usura, e il modulo per aggiungerne uno nuovo.</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="La scheda Avanzamenti e velocità con una punta del magazzino di esempio" width="100%">
+</p>
+
+<p align="center"><em>La scheda Avanzamenti e velocità aperta con `--tab calc`: la velocità, l'avanzamento, l'affondamento e la profondità di passata per una punta da 0,8 mm nel FR4, con la formula di ogni numero e la nota che il mandrino limita la velocità.</em></p>
 
 ## ✨ Funzionalità
 

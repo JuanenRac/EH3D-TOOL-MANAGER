@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| バージョン | `0.0.7` |
+| バージョン | `0.0.8` |
 | 成熟度 | 足場 |
 | テスト | 147 |
 | 技術スタック | Rust |
@@ -80,6 +80,12 @@ EH3D-TOOL-MANAGER は EH3D Fabrication Suite のプログラムの一つです�
 </p>
 
 <p align="center"><em>サンプルの工具庫を開いた「工具」タブ：9本の工具の種類、サイズ、時間、穴数、摩耗と、新しい工具を追加するフォームを表示します。</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="サンプルの工具庫のドリルを使った「送りと回転数」タブ" width="100%">
+</p>
+
+<p align="center"><em>`--tab calc` で開いた「送りと回転数」タブ：FR4 の 0.8 mm ドリルの回転数、送り、突っ込み、1 パスの深さを、各数値の式と、主軸が回転数を制限するという注記つきで表示します。</em></p>
 
 ## ✨ 機能
 

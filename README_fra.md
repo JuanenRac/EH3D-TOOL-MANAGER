@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Stack-Rust-DEA584.svg" alt="Rust">
   <img src="https://img.shields.io/badge/Languages-8-00E5FF.svg" alt="Languages">
-  <img src="https://img.shields.io/badge/Version-0.0.7-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.0.8-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-scaffolding-FFB020.svg" alt="Maturity">
 </p>
 
@@ -29,7 +29,7 @@
 
 | | |
 |---|---|
-| Version | `0.0.7` |
+| Version | `0.0.8` |
 | Maturité | Échafaudage |
 | Tests | 147 |
 | Pile technique | Rust |
@@ -80,6 +80,12 @@ Comment les parties de ce dépôt s'articulent : qui l'utilise, ce qu'il contien
 </p>
 
 <p align="center"><em>L'onglet Outils avec le magasin d'exemple : neuf outils avec leur type, leur taille, leurs heures, leurs trous et leur usure, et le formulaire pour en ajouter un nouveau.</em></p>
+
+<p align="center">
+  <img src="images/screens/tool-manager-02-calc.png" alt="L'onglet Avances et vitesses avec un foret du magasin d'exemple" width="100%">
+</p>
+
+<p align="center"><em>L'onglet Avances et vitesses ouvert avec `--tab calc` : la vitesse, l'avance, la plongée et la profondeur de passe pour un foret de 0,8 mm dans du FR4, avec la formule de chaque nombre et la note indiquant que la broche limite la vitesse.</em></p>
 
 ## ✨ Fonctionnalités
 
