@@ -113,3 +113,34 @@ fn a_save_keeps_the_previous_crib_beside_it_and_leaves_no_temporary_file() {
     assert_eq!(names, ["crib.json", "crib.json.bak"]);
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_restore_puts_back_the_backup_on_request_keeps_the_replaced_file_and_refuses_a_bad_backup() {
+    let dir = scratch("restore");
+    let file = dir.join("crib.json");
+    let mut crib = Crib::default();
+    crib.add(Tool::new("Drill 0.8", Kind::Drill, 0.8)).unwrap();
+    store::save(&crib, &file).unwrap();
+    crib.add(Tool::new("Drill 1.0", Kind::Drill, 1.0)).unwrap();
+    store::save(&crib, &file).unwrap(); // the backup holds one tool
+    fs::write(&file, b"{ broken").unwrap();
+    // nothing happens by itself: the damaged file still fails to load
+    assert!(store::load(&file).is_err());
+    assert_eq!(store::restore_from_backup(&file, 1).unwrap(), 1);
+    assert_eq!(store::load(&file).unwrap().tools.len(), 1);
+    assert_eq!(
+        fs::read(dir.join("crib.json.damaged")).unwrap(),
+        b"{ broken"
+    );
+    assert!(dir.join("crib.json.bak").exists());
+    // a backup that does not read is refused and the file stays as it is
+    fs::write(dir.join("crib.json.bak"), b"nope").unwrap();
+    let before = fs::read(&file).unwrap();
+    assert!(store::restore_from_backup(&file, 1).is_err());
+    assert_eq!(fs::read(&file).unwrap(), before);
+    // no backup at all is refused with its code
+    let none = dir.join("other.json");
+    let why = store::restore_from_backup(&none, 1).unwrap_err();
+    assert!(why.starts_with("file_unreadable"), "{why}");
+    let _ = fs::remove_dir_all(&dir);
+}

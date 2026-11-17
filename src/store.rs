@@ -183,6 +183,26 @@ pub fn save(crib: &Crib, file: &Path) -> Result<(), String> {
     files::write_atomic(file, to_json(crib).as_bytes())
 }
 
+/// The file with `suffix` added to its name (`crib.json.bak`).
+fn beside(file: &Path, suffix: &str) -> std::path::PathBuf {
+    let mut name = file.as_os_str().to_owned();
+    name.push(suffix);
+    std::path::PathBuf::from(name)
+}
+
+/// Puts back the crib that `save` kept as `<file>.bak`, on request and never by itself. The backup must be a crib that reads; the file it replaces (damaged or not) is kept as
+/// `<file>.damaged`, and the backup itself stays where it is. Returns how many tools the restored crib has.
+pub fn restore_from_backup(file: &Path, max_mib: u64) -> Result<usize, String> {
+    let backup = beside(file, ".bak");
+    let crib = load_with_limit(&backup, max_mib)?;
+    if file.is_file() {
+        std::fs::copy(file, beside(file, ".damaged"))
+            .map_err(|e| format!("{}: {e}", beside(file, ".damaged").display()))?;
+    }
+    files::write_atomic(file, to_json(&crib).as_bytes())?;
+    Ok(crib.tools.len())
+}
+
 /// The crib of a file that is not larger than `max_mib` MiB (`max_file_mib` of `tools.cfg`).
 pub fn load_with_limit(file: &Path, max_mib: u64) -> Result<Crib, String> {
     from_json(&files::read_text_limited(file, files::mib(max_mib))?)
