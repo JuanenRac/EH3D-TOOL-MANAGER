@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A name that already starts with a quote mark and a formula character reads back exactly:** the table puts one more quote mark in front of a text that starts like a formula after any quote marks, and reading takes exactly one away, so `'=1+1` is no longer changed by an export and an import. **The crib is written durably and the previous one is kept:** the temporary file has a name of its own per program and call, is flushed to the disk before it replaces the file, and `<file>.bak` holds the crib that was there before each save.
+
 - **A simulated shift (`sim`):** seeded job reports (hours, metres and holes of a tool) played into the crib as a machine would report them, with the crib saved after each one, a tool that reaches its limit replaced at once, and the failures that can happen with their recovery: a report that is not a number or is negative, a tool that was removed, saves that cannot be written (the file keeps the last good copy until the next save) and a crib file cut in the middle (refused at every place; the last good copy brings it back). Seven new tests (154 in all) cover them and 15 seeded campaigns. It has only run on a computer: no machine has reported its use to it.
 
 ## [0.0.8] - A size limit for the files read, a window that opens on the page you choose and shared validation tools

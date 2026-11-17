@@ -7,9 +7,15 @@ pub const HEADER: &str = "id,name,kind,diameter_mm,flutes,length_mm,tip_angle_de
 /// A text that a spreadsheet would run as a formula when it opens the file starts with one of these.
 const FORMULA_START: [char; 6] = ['=', '+', '-', '@', '\t', '\r'];
 
-/// The text as it goes in the table: one that starts like a formula gets a quote mark in front (`'=1+1`), so that a spreadsheet shows it as text. `unformula` takes it away again.
+/// True when the text, after any quote marks in front, starts like a formula: such a text carries one more quote mark in the table, so that reading it back takes exactly one away.
+fn is_marked(text: &str) -> bool {
+    text.trim_start_matches('\'').starts_with(FORMULA_START)
+}
+
+/// The text as it goes in the table: one that starts like a formula (`=1+1`), or like a formula that already has quote marks in front (`'=1+1`), gets one more quote mark in front, so that
+/// a spreadsheet shows it as text and `unformula` gives back exactly what was written.
 fn neutralise(text: &str) -> String {
-    if text.starts_with(FORMULA_START) {
+    if is_marked(text) {
         format!("'{text}")
     } else {
         text.to_string()
@@ -18,7 +24,7 @@ fn neutralise(text: &str) -> String {
 
 fn unformula(text: &str) -> String {
     match text.strip_prefix('\'') {
-        Some(rest) if rest.starts_with(FORMULA_START) => rest.to_string(),
+        Some(rest) if is_marked(rest) => rest.to_string(),
         _ => text.to_string(),
     }
 }
