@@ -83,6 +83,7 @@ fn the_help_runs_and_an_unknown_option_is_refused() {
         "wear",
         "export-csv",
         "import-csv",
+        "restore",
         "calc",
     ] {
         assert!(text.contains(command), "the help does not name {command}");

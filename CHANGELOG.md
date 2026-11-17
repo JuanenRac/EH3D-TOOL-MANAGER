@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The previous crib can be put back, on request:** `eh3d-tools restore FILE.json` replaces the file by `FILE.json.bak` (the crib that the last save kept), after checking that the backup reads, keeps the file it replaces as `FILE.json.damaged` and prints a warning that whatever was saved after the backup is not in it; nothing is ever restored by itself. Tested with a damaged file, a backup that does not read and a missing backup.
+
 - **A key of a tool that the program does not know is kept:** a crib file touched by another tool, or written by a later version of the same schema, keeps the extra keys of each tool when it is loaded and saved again instead of losing them without a word. Tested with a file that has extra keys of several types.
 
 - **A name that already starts with a quote mark and a formula character reads back exactly:** the table puts one more quote mark in front of a text that starts like a formula after any quote marks, and reading takes exactly one away, so `'=1+1` is no longer changed by an export and an import. **The crib is written durably and the previous one is kept:** the temporary file has a name of its own per program and call, is flushed to the disk before it replaces the file, and `<file>.bak` holds the crib that was there before each save.

@@ -21,6 +21,7 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools wear FILE.json                 the tools that are worn or about to be
   eh3d-tools export-csv FILE.json
   eh3d-tools import-csv FILE.json TABLE.csv
+  eh3d-tools restore FILE.json               put back FILE.json.bak (kept by the last save); the file it replaces is kept as FILE.json.damaged
   eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG] [--depth MM]
   eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]     the width of the cut of a V-bit at a depth
 
@@ -181,6 +182,17 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             }
             store::save(&crib, target)?;
             println!("{} tools written to {}", crib.tools.len(), args[0]);
+            Ok(())
+        }
+        "restore" => {
+            need(&args, 1, "a crib file")?;
+            cli_args::finish(&args, 1)?;
+            let target = Path::new(&args[0]);
+            let tools = store::restore_from_backup(target, max_mib()?)?;
+            println!(
+                "WARNING: {} was replaced by its backup {}.bak ({tools} tools); whatever was saved after that backup is not in it. The file that was there is kept as {}.damaged",
+                args[0], args[0], args[0]
+            );
             Ok(())
         }
         "calc" => {
