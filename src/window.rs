@@ -269,6 +269,11 @@ pub enum Status {
         tools: usize,
         backup: bool,
     },
+    /// The crib was put back from its `.bak` on request.
+    Restored {
+        file: String,
+        tools: usize,
+    },
     NewCrib,
     Added {
         name: String,
@@ -338,6 +343,10 @@ impl Status {
                 };
                 fill(msg.tr(lang), &[file.as_str(), count(*tools).as_str()])
             }
+            Status::Restored { file, tools } => fill(
+                Msg::StatusRestored.tr(lang),
+                &[file.as_str(), count(*tools).as_str()],
+            ),
             Status::NewCrib => Msg::StatusNewCrib.tr(lang).to_string(),
             Status::Added { name, id } => fill(
                 Msg::StatusAdded.tr(lang),
@@ -721,6 +730,31 @@ impl Window {
                     backup,
                 };
             }
+            Err(e) => self.fail(e),
+        }
+    }
+
+    /// Puts back the crib that the last save kept as `<file>.bak`, on request and never by itself: the file it replaces is kept as `<file>.damaged`, the crib of the
+    /// window becomes the one of the backup and the status says that what was saved after the backup is not in it.
+    pub fn restore_backup(&mut self) {
+        let Some(file) = self.file_path() else {
+            self.status = Status::NeedFile;
+            return;
+        };
+        match store::restore_from_backup(&file, self.settings.max_file_mib) {
+            Ok(tools) => match store::load_with_limit(&file, self.settings.max_file_mib) {
+                Ok(crib) => {
+                    self.crib = crib;
+                    self.forget_choice();
+                    self.dirty = false;
+                    self.backup_pending = false;
+                    self.status = Status::Restored {
+                        file: file.display().to_string(),
+                        tools,
+                    };
+                }
+                Err(e) => self.fail(e),
+            },
             Err(e) => self.fail(e),
         }
     }
@@ -1266,6 +1300,42 @@ mod tests {
     }
 
     #[test]
+    fn the_backup_is_put_back_on_request_and_what_it_replaces_is_kept() {
+        let mut w = window("restore");
+        add(&mut w, "A", Kind::Drill, "0.8");
+        w.save();
+        add(&mut w, "B", Kind::Drill, "0.9");
+        w.save();
+        // a second save keeps the file of the first one beside it
+        let bak = format!("{}.bak", w.file_text);
+        assert_eq!(
+            store::load(std::path::Path::new(&bak)).unwrap().tools.len(),
+            1
+        );
+        w.restore_backup();
+        assert!(
+            matches!(&w.status, Status::Restored { tools: 1, .. }),
+            "{:?}",
+            w.status
+        );
+        assert!(!w.status.is_problem());
+        assert_eq!(w.crib.tools.len(), 1);
+        assert!(!w.dirty);
+        assert!(w.status.text(Lang::Es).contains(".damaged"));
+        let damaged = format!("{}.damaged", w.file_text);
+        let kept = store::load(std::path::Path::new(&damaged)).unwrap();
+        assert_eq!(kept.tools.len(), 2);
+        // without a backup there is nothing to put back and the window says so
+        let mut none = window("restore_none");
+        none.save();
+        none.restore_backup();
+        assert!(none.status.is_problem(), "{:?}", none.status);
+        none.file_text = String::new();
+        none.restore_backup();
+        assert_eq!(none.status, Status::NeedFile);
+    }
+
+    #[test]
     fn a_new_crib_keeps_the_file_it_replaces_as_a_backup() {
         let mut w = window("newcrib");
         add(&mut w, "A", Kind::Drill, "0.8");
@@ -1579,6 +1649,10 @@ mod tests {
                 file: "f".into(),
                 tools: 2,
                 backup: true,
+            },
+            Status::Restored {
+                file: "f".into(),
+                tools: 2,
             },
             Status::NewCrib,
             Status::Added {

@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The window has a "Restore backup" button:** it puts back the crib that the last save kept as `<file>.bak` (checking first that it reads), keeps the file it replaces as `<file>.damaged` and says that whatever was saved after that backup is not in it, in the eight languages; without a backup it says so as a problem. Tested with two saves, the restore, the file that is kept and a folder with no backup.
+
 - **The previous crib can be put back, on request:** `eh3d-tools restore FILE.json` replaces the file by `FILE.json.bak` (the crib that the last save kept), after checking that the backup reads, keeps the file it replaces as `FILE.json.damaged` and prints a warning that whatever was saved after the backup is not in it; nothing is ever restored by itself. Tested with a damaged file, a backup that does not read and a missing backup.
 
 - **A key of a tool that the program does not know is kept:** a crib file touched by another tool, or written by a later version of the same schema, keeps the extra keys of each tool when it is loaded and saved again instead of losing them without a word. Tested with a file that has extra keys of several types.
