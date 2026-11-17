@@ -9,14 +9,38 @@ use std::path::Path;
 pub const SCHEMA_VERSION: u64 = 1;
 pub const MAX_TOOLS: usize = 10_000;
 
+/// The keys of a tool that this program reads and writes; any other key of a tool is kept in `Tool::extra`.
+const KNOWN_KEYS: [&str; 14] = [
+    "id",
+    "name",
+    "kind",
+    "diameter_mm",
+    "flutes",
+    "length_mm",
+    "tip_angle_deg",
+    "shank_mm",
+    "material",
+    "hours",
+    "meters",
+    "holes",
+    "max_hours",
+    "max_holes",
+];
+
 pub fn to_json(crib: &Crib) -> String {
     let tools: Vec<Value> = crib
         .tools
         .iter()
         .map(|t| {
-            json!({"id": t.id, "name": t.name, "kind": t.kind.key(), "diameter_mm": t.diameter_mm, "flutes": t.flutes, "length_mm": t.length_mm,
+            let mut item = json!({"id": t.id, "name": t.name, "kind": t.kind.key(), "diameter_mm": t.diameter_mm, "flutes": t.flutes, "length_mm": t.length_mm,
                    "tip_angle_deg": t.tip_angle_deg, "shank_mm": t.shank_mm, "material": t.material, "hours": t.hours, "meters": t.meters,
-                   "holes": t.holes, "max_hours": t.max_hours, "max_holes": t.max_holes})
+                   "holes": t.holes, "max_hours": t.max_hours, "max_holes": t.max_holes});
+            if let Some(object) = item.as_object_mut() {
+                for (key, value) in &t.extra {
+                    object.entry(key.clone()).or_insert_with(|| value.clone());
+                }
+            }
+            item
         })
         .collect();
     serde_json::to_string_pretty(
@@ -110,6 +134,13 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
         t.holes = whole(item, "holes", 0).map_err(fail)?;
         t.max_hours = number(item, "max_hours", 0.0).map_err(fail)?;
         t.max_holes = whole(item, "max_holes", 0).map_err(fail)?;
+        if let Some(object) = item.as_object() {
+            t.extra = object
+                .iter()
+                .filter(|(key, _)| !KNOWN_KEYS.contains(&key.as_str()))
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect();
+        }
         t.validate().map_err(fail)?;
         if t.id == 0 || crib.tools.iter().any(|o| o.id == t.id) {
             return Err(fail(format!(

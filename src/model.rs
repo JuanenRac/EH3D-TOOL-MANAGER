@@ -58,6 +58,8 @@ pub struct Tool {
     /// The wear limits; 0 means no limit of that kind.
     pub max_hours: f64,
     pub max_holes: u64,
+    /// The keys of the file that this program does not know (written by another tool or by a later version of the same schema): kept and written back as they were.
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Tool {
@@ -77,6 +79,7 @@ impl Tool {
             holes: 0,
             max_hours: 0.0,
             max_holes: 0,
+            extra: serde_json::Map::new(),
         }
     }
 
