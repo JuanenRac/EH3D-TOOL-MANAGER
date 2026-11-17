@@ -493,3 +493,19 @@ fn the_calc_command_uses_the_numbers_of_tools_cfg_and_refuses_a_bad_file() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_key_the_program_does_not_know_survives_a_load_and_a_save() {
+    let text = r#"{"schema_version":1,"next_id":3,"tools":[
+        {"id":1,"name":"Drill 0.8","kind":"drill","diameter_mm":0.8,"vendor":"acme","notes":{"batch":[1,2]}},
+        {"id":2,"name":"Plain","kind":"drill","diameter_mm":1.0}]}"#;
+    let crib = from_json(text).unwrap();
+    assert_eq!(crib.tools[0].extra.get("vendor").unwrap(), "acme");
+    assert!(crib.tools[1].extra.is_empty());
+    let again = from_json(&to_json(&crib)).unwrap();
+    assert_eq!(again, crib);
+    let out: serde_json::Value = serde_json::from_str(&to_json(&crib)).unwrap();
+    assert_eq!(out["tools"][0]["vendor"], "acme");
+    assert_eq!(out["tools"][0]["notes"]["batch"][1], 2);
+    assert!(out["tools"][1].get("vendor").is_none());
+}
