@@ -1,8 +1,9 @@
 //! Reading a file with a limit of size and writing one so that it is never left half written. Every refusal starts with a code that does not change (`file_too_large`,
 //! `file_unreadable`, `file_not_text`, `file_unwritable`), followed by the name of the file.
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// The file is larger than the limit (`max_file_mib` of `tools.cfg`).
 pub const TOO_LARGE: &str = "file_too_large";
@@ -34,14 +35,24 @@ pub fn read_text_limited(path: &Path, max_bytes: u64) -> Result<String, String> 
     String::from_utf8(bytes).map_err(|_| format!("{NOT_TEXT}: {shown}: the file is not text"))
 }
 
-/// Writes `bytes` to a temporary file beside `file` and renames it over `file`, so that a cut or a full disk leaves the old file whole. The temporary file is removed when
-/// anything fails. Whether an existing file may be replaced is for the caller to decide before.
+/// Writes `bytes` to a temporary file beside `file` (its name is unique to this process and call, so that two programs never share one), makes it durable on the disk and renames it
+/// over `file`, so that a cut or a full disk leaves the old file whole and a power cut after the rename does not leave it empty. The temporary file is removed when anything fails.
+/// Whether an existing file may be replaced is for the caller to decide before.
 pub fn write_atomic(file: &Path, bytes: &[u8]) -> Result<(), String> {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     let mut tmp = file.as_os_str().to_owned();
-    tmp.push(".tmp");
+    tmp.push(format!(
+        ".{}.{}.tmp",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
     let tmp = std::path::PathBuf::from(tmp);
     let fail = |e: std::io::Error| format!("{UNWRITABLE}: {}: {e}", file.display());
-    if let Err(e) = std::fs::write(&tmp, bytes) {
+    let written = std::fs::File::create(&tmp).and_then(|mut f| {
+        f.write_all(bytes)?;
+        f.sync_all()
+    });
+    if let Err(e) = written {
         let _ = std::fs::remove_file(&tmp);
         return Err(fail(e));
     }

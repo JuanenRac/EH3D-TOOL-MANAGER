@@ -280,6 +280,28 @@ fn the_csv_quotes_a_name_with_a_comma_a_quote_or_a_line_break_and_reads_it_back(
 }
 
 #[test]
+fn a_name_that_looks_like_a_formula_or_already_has_a_quote_in_front_reads_back_exactly() {
+    let names = [
+        "=1+1", "+a", "-b", "@c", "'=1+1", "''=1+1", "'+x", "'plain", "''plain", "it's", "'", "'-",
+    ];
+    for (i, name) in names.iter().enumerate() {
+        let mut c = Crib::default();
+        c.add(drill(name)).unwrap();
+        let text = to_csv(&c);
+        assert_eq!(
+            from_csv(&text).unwrap(),
+            c,
+            "{name} (case {i}) lost its shape in the table"
+        );
+        // nothing that a spreadsheet would run starts a cell
+        for line in text.lines().skip(1) {
+            let cell = line.split(',').nth(1).unwrap_or("");
+            assert!(!cell.starts_with(['=', '+', '-', '@']), "{cell}");
+        }
+    }
+}
+
+#[test]
 fn a_csv_with_crlf_lines_a_byte_order_mark_and_blank_lines_is_read() {
     let mut c = Crib::default();
     c.add(drill("a")).unwrap();

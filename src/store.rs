@@ -142,7 +142,13 @@ pub fn from_json(text: &str) -> Result<Crib, String> {
 }
 
 /// Writes the crib to a temporary file beside the real one and renames it over the real one, so that a cut or a full disk leaves the old crib whole.
+/// The file that was there before is kept beside it as `<file>.bak` (best effort: a copy that fails does not stop the save).
 pub fn save(crib: &Crib, file: &Path) -> Result<(), String> {
+    if file.is_file() {
+        let mut backup = file.as_os_str().to_owned();
+        backup.push(".bak");
+        let _ = std::fs::copy(file, std::path::PathBuf::from(backup));
+    }
     files::write_atomic(file, to_json(crib).as_bytes())
 }
 

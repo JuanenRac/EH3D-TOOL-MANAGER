@@ -88,3 +88,28 @@ fn a_file_is_replaced_whole_and_no_temporary_file_is_left() {
     assert!(why.starts_with(UNWRITABLE), "{why}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_save_keeps_the_previous_crib_beside_it_and_leaves_no_temporary_file() {
+    let dir = scratch("backup");
+    let file = dir.join("crib.json");
+    let mut crib = Crib::default();
+    crib.add(Tool::new("Drill 0.8", Kind::Drill, 0.8)).unwrap();
+    store::save(&crib, &file).unwrap();
+    assert!(!dir.join("crib.json.bak").exists());
+    let first = fs::read_to_string(&file).unwrap();
+    crib.add(Tool::new("Drill 1.0", Kind::Drill, 1.0)).unwrap();
+    store::save(&crib, &file).unwrap();
+    assert_eq!(
+        fs::read_to_string(dir.join("crib.json.bak")).unwrap(),
+        first
+    );
+    assert_eq!(store::load(&file).unwrap().tools.len(), 2);
+    let mut names: Vec<String> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["crib.json", "crib.json.bak"]);
+    let _ = fs::remove_dir_all(&dir);
+}
