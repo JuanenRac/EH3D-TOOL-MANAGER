@@ -112,6 +112,9 @@ impl App {
             if ui.button(Msg::Save.tr(lang)).clicked() {
                 self.win.save();
             }
+            if ui.button(Msg::RestoreBackup.tr(lang)).clicked() {
+                self.win.restore_backup();
+            }
             if ui.button(Msg::NewCrib.tr(lang)).clicked() {
                 self.win.new_crib();
             }
