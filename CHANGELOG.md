@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A list that shows only what you ask for:** `eh3d-tools list FILE.json [--kind KIND] [--worn] [--sort id|name|wear]` shows only the tools of a kind, only the ones that are worn or about to be, or both, by number (as before), by name without regard to upper and lower case or the most worn first (a tool to replace, then the ones at 95 %, and a tool with no limit last; ties go by number so the order is the same every time); a kind or a way to sort that does not exist is an error that names the choices, and a list that matches nothing says `no tool matches`. The library has it as `Crib::select` with `Selection` and `Sort`. Tested with every combination on a sample crib, the refusals and 25 seeded cribs whose order, filters and sums agree.
+
+- **One tool in full, and what is left before its limits:** `eh3d-tools show FILE.json ID` prints every value of a tool (kind, diameter, flutes, length, tip angle, shank, material, hours, metres, holes) and, for each limit that is set, how much is left (`10 h (0.5 h left)`, `1000 (0 left)`) or `no limit`; the library has `Tool::remaining`, which never gives a negative number for a limit that was passed. Tested with a tool at 95 % of its hours, one with no limits, one at its hole limit and a tool or a number that does not exist.
+
+- **A worn tool replaced in one step:** `eh3d-tools replace FILE.json ID` puts a new tool in the place of a worn one: the counters go back to zero and the number, the name, the limits and the keys the program does not know stay as they were, the previous crib is kept as `FILE.json.bak`, and the old counters are printed so they can be written down. A tool that does not exist changes nothing. The library has `Crib::replace_tool`, which the simulated shift now uses too. Tested with the file that is kept, the keys that survive and a missing tool.
+
+- **A tool can be taken out from the command line:** `eh3d-tools remove FILE.json ID` removes a tool and says which one, and its number is not given again (the next tool added gets the next number, not the free one); a number that is not there or is not a number leaves the file exactly as it was. Until now only the window and the library could do this. Tested with the numbers that follow and the file left alone.
+
+- **The sums by kind:** `eh3d-tools stats FILE.json` adds up, for each kind that has a tool, the tools, the hours, the metres, the holes and how many have to be replaced, with a total row; an empty crib says so, the sum of holes stops at the largest number instead of wrapping round, and the library has it as `Crib::summary`. Tested with the rows and the total of a sample crib, an empty crib, the largest numbers and the seeded cribs.
+
 ## [0.0.9] - Restoring the previous crib, unknown keys kept and a simulated shift
 
 - **The window has a "Restore backup" button:** it puts back the crib that the last save kept as `<file>.bak` (checking first that it reads), keeps the file it replaces as `<file>.damaged` and says that whatever was saved after that backup is not in it, in the eight languages; without a backup it says so as a problem. Tested with two saves, the restore, the file that is kept and a folder with no backup.

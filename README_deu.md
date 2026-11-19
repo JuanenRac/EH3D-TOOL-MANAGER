@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 154 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 175 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.9` |
 | Reifegrad | Gerüst |
-| Tests | 154 |
+| Tests | 175 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,7 +47,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-tools` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 154 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben sowie einer simulierten Schicht von Aufträgen (Meldungen, die keine Zahlen sind, Werkzeuge, die es nicht mehr gibt, Speicherungen, die scheitern, eine mittendrin abgeschnittene Magazindatei) samt Wiederherstellung. |
+| Tests | 🟡 | 175 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben sowie einer simulierten Schicht von Aufträgen (Meldungen, die keine Zahlen sind, Werkzeuge, die es nicht mehr gibt, Speicherungen, die scheitern, eine mittendrin abgeschnittene Magazindatei) samt Wiederherstellung. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-tools-gui`): eine Tabelle der Werkzeuge, die mit den Prüfungen der Kommandozeile hinzugefügt, geändert und entfernt werden, Filter und Suche, CSV-Import und -Export mit den Fehlern der Bibliothek und ein Rechner für Vorschübe und Drehzahlen, der seine Formeln und Bedingungen zeigt; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -97,6 +97,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Ein Werkzeuglager, das hält:** die Nummer eines entfernten Werkzeugs wird nie wieder vergeben (das Lager merkt sich `next_id`), eine ID, die keine ganze Zahl ist, wird als solche gemeldet, das CSV lehnt Text nach einem schließenden Anführungszeichen ab, ein Text, der wie eine Formel beginnt (`=`, `+`, `-`, `@`), wird als Text geschrieben, damit die Tabellenkalkulation ihn nicht ausführt, das Material hat eine Grenze, `--holes` ist eine ganze Zahl, eine unbekannte Option ist ein Fehler, und `calc` sagt, dass das Ergebnis für einen V-Fräser oder Gravierstichel nur ein Ausgangspunkt ist.
 * **Die Schnittbreite eines V-Fräsers:** `eh3d-tools vbit --depth MM [--angle GRAD] [--flat MM]` berechnet `2 x Tiefe x tan(Winkel / 2) + Spitzenfläche` (ein 60-Grad-Fräser bei 0,5 mm ergibt 0,5774 mm plus die flache Spitze von 0,1 mm = 0,6774 mm); der Winkel liegt zwischen 10 und 170 Grad, die Tiefe zwischen 0 und 100 mm und die flache Spitze zwischen 0 und 5 mm, und was nicht angegeben ist, ist der Wert aus `tools.cfg`. `calc --depth MM` nimmt diese Breite als Durchmesser, mit dem ein V-Fräser oder Gravierstichel in den Vorschüben und Drehzahlen arbeitet, und der Rechner des Fensters hat ein Feld für die Tiefe, zeigt die Schnittbreite und die Formel mit ihren Zahlen; ohne Tiefe sind die Zahlen die gewohnten.
 * **Den vorherigen Stand zurückholen:** `eh3d-tools restore DATEI.json` ersetzt die Datei durch `DATEI.json.bak` (den Stand, den das letzte Speichern behielt), nachdem geprüft wurde, dass die Sicherung lesbar ist, behält die ersetzte Datei als `DATEI.json.damaged` und warnt, dass alles, was nach dieser Sicherung gespeichert wurde, nicht darin enthalten ist; das Fenster hat dafür die Schaltfläche "Sicherung wiederherstellen". Nichts wird je von selbst wiederhergestellt.
+* **Auflisten, ein Werkzeug vollständig, Ersetzen, Entfernen und die Summen:** `eh3d-tools list DATEI.json [--kind ART] [--worn] [--sort id|name|wear]` zeigt nur eine Art oder nur die verschlissenen Werkzeuge, nach Nummer, nach Name oder die am stärksten verschlissenen zuerst (und meldet `no tool matches`, wenn keines passt); `show DATEI.json ID` gibt alle Werte eines Werkzeugs aus und was bis zu jeder Grenze noch bleibt; `replace DATEI.json ID` setzt ein neues Werkzeug an die Stelle eines verschlissenen (die Zähler gehen auf null zurück, alles andere bleibt, und die vorherige Werkzeugkartei wird als `.bak` aufbewahrt); `remove DATEI.json ID` nimmt ein Werkzeug heraus (seine Nummer wird nicht wieder vergeben); `stats DATEI.json` summiert Werkzeuge, Stunden, Meter, Löcher und zu ersetzende Werkzeuge nach Art. Jedes davon ist eine Funktion der Bibliothek (`Crib::select`, `Tool::remaining`, `Crib::replace_tool`, `Crib::summary`).
 
 ## 🔒 Sicherheit und Schutz
 
@@ -173,7 +174,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 154 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 175 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 

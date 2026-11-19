@@ -104,16 +104,8 @@ pub mod sim {
             match crib.record_use(report.tool, report.hours, report.meters, report.holes) {
                 Ok(wear) => {
                     out.applied += 1;
-                    if wear == Wear::Replace {
-                        if let Some(old) = crib.get(report.tool) {
-                            let mut fresh = old.clone();
-                            fresh.hours = 0.0;
-                            fresh.meters = 0.0;
-                            fresh.holes = 0;
-                            if crib.update(fresh).is_ok() {
-                                out.replaced.push(report.tool);
-                            }
-                        }
+                    if wear == Wear::Replace && crib.replace_tool(report.tool).is_ok() {
+                        out.replaced.push(report.tool);
                     }
                 }
                 Err(_) => out.refused += 1,

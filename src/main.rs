@@ -5,7 +5,7 @@
 mod cli_args;
 
 use eh3d_tool_manager::calc::{feeds_speeds_traced_at, v_bit_width_mm, Material};
-use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear};
+use eh3d_tool_manager::model::{Crib, Kind, Selection, Sort, Tool, Wear};
 use eh3d_tool_manager::settings::{data_dir, Settings};
 use eh3d_tool_manager::{csv, files, store};
 use std::env;
@@ -16,9 +16,13 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
 
   eh3d-tools init FILE.json
   eh3d-tools add FILE.json NAME KIND DIAMETER_MM [--flutes N] [--angle DEG] [--max-hours H] [--max-holes N]
-  eh3d-tools list FILE.json
+  eh3d-tools list FILE.json [--kind KIND] [--worn] [--sort id|name|wear]
+  eh3d-tools show FILE.json ID              every value of a tool and what is left before its limits
   eh3d-tools use FILE.json ID [--hours H] [--meters M] [--holes N]
+  eh3d-tools replace FILE.json ID           a new tool in the place of a worn one: the counters go back to zero
+  eh3d-tools remove FILE.json ID            take a tool out of the crib (its number is never given again)
   eh3d-tools wear FILE.json                 the tools that are worn or about to be
+  eh3d-tools stats FILE.json                what the tools add up to, by kind
   eh3d-tools export-csv FILE.json
   eh3d-tools import-csv FILE.json TABLE.csv
   eh3d-tools restore FILE.json               put back FILE.json.bak (kept by the last save); the file it replaces is kept as FILE.json.damaged
@@ -44,6 +48,59 @@ fn whole_flag(args: &mut Vec<String>, name: &str) -> Result<Option<u64>, String>
                 .map_err(|_| format!("{name} '{value}' is not a whole number of 0 or more"))
         })
         .transpose()
+}
+
+/// One line of a list of tools.
+fn line(t: &Tool) -> String {
+    format!(
+        "{:>3}  {:<24} {:<9} {:>6.3} mm  {:>2} flutes  {:>7.1} h  {:>7} holes  {}",
+        t.id,
+        t.name,
+        t.kind.key(),
+        t.diameter_mm,
+        t.flutes,
+        t.hours,
+        t.holes,
+        describe(t.wear())
+    )
+}
+
+/// Every value of a tool, one to a line, and what is left before each of its limits.
+fn detail(t: &Tool) -> String {
+    let left = t.remaining();
+    let hours = match left.hours {
+        Some(h) => format!("{} h ({h:.1} h left)", t.max_hours),
+        None => "no limit".to_string(),
+    };
+    let holes = match left.holes {
+        Some(h) => format!("{} ({h} left)", t.max_holes),
+        None => "no limit".to_string(),
+    };
+    let angle = t
+        .tip_angle_deg
+        .map(|a| format!("  tip angle   {a} degrees\n"))
+        .unwrap_or_default();
+    format!(
+        "tool {}: {}\n  kind        {}\n  diameter    {} mm\n  flutes      {}\n  length      {} mm\n{angle}  shank       {} mm\n  material    {}\n  used        {:.1} h, {:.1} m, {} holes\n  hour limit  {hours}\n  hole limit  {holes}\n  wear        {}",
+        t.id,
+        t.name,
+        t.kind.key(),
+        t.diameter_mm,
+        t.flutes,
+        t.length_mm,
+        t.shank_mm,
+        t.material,
+        t.hours,
+        t.meters,
+        t.holes,
+        describe(t.wear())
+    )
+}
+
+/// The number of a tool given as a word of the command line.
+fn tool_number(text: &str) -> Result<u32, String> {
+    text.parse::<u32>()
+        .map_err(|_| format!("'{text}' is not a tool number"))
 }
 
 fn describe(w: Wear) -> String {
@@ -109,21 +166,95 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             Ok(())
         }
         "list" => {
+            let selection = Selection {
+                kind: cli_args::flag(&mut args, "--kind")?
+                    .map(|k| Kind::parse(&k))
+                    .transpose()?,
+                worn_only: cli_args::switch(&mut args, "--worn"),
+                sort: cli_args::flag(&mut args, "--sort")?
+                    .map(|s| Sort::parse(&s))
+                    .transpose()?
+                    .unwrap_or_default(),
+            };
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;
-            for t in &store::load_with_limit(Path::new(&args[0]), max_mib()?)?.tools {
+            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
+            let shown = crib.select(&selection);
+            for t in &shown {
+                println!("{}", line(t));
+            }
+            if shown.is_empty() && (selection.kind.is_some() || selection.worn_only) {
+                println!("no tool matches");
+            }
+            Ok(())
+        }
+        "show" => {
+            need(&args, 2, "a file and a tool number")?;
+            cli_args::finish(&args, 2)?;
+            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
+            let id = tool_number(&args[1])?;
+            let tool = crib
+                .get(id)
+                .ok_or_else(|| format!("there is no tool {id}"))?;
+            println!("{}", detail(tool));
+            Ok(())
+        }
+        "replace" => {
+            need(&args, 2, "a file and a tool number")?;
+            cli_args::finish(&args, 2)?;
+            let file = Path::new(&args[0]);
+            let mut crib = store::load_with_limit(file, max_mib()?)?;
+            let id = tool_number(&args[1])?;
+            let (hours, meters, holes) = crib.replace_tool(id)?;
+            store::save(&crib, file)?;
+            println!(
+                "tool {id}: counters back to zero (they said {hours:.1} h, {meters:.1} m, {holes} holes)"
+            );
+            Ok(())
+        }
+        "remove" => {
+            need(&args, 2, "a file and a tool number")?;
+            cli_args::finish(&args, 2)?;
+            let file = Path::new(&args[0]);
+            let mut crib = store::load_with_limit(file, max_mib()?)?;
+            let removed = crib.remove(tool_number(&args[1])?)?;
+            store::save(&crib, file)?;
+            println!(
+                "tool {} ({}) removed; its number is not given again",
+                removed.id, removed.name
+            );
+            Ok(())
+        }
+        "stats" => {
+            need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
+            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
+            let rows = crib.summary();
+            if rows.is_empty() {
+                println!("the crib has no tool");
+                return Ok(());
+            }
+            println!("kind       tools  hours   metres    holes  to replace");
+            for r in &rows {
                 println!(
-                    "{:>3}  {:<24} {:<9} {:>6.3} mm  {:>2} flutes  {:>7.1} h  {:>7} holes  {}",
-                    t.id,
-                    t.name,
-                    t.kind.key(),
-                    t.diameter_mm,
-                    t.flutes,
-                    t.hours,
-                    t.holes,
-                    describe(t.wear())
+                    "{:<9} {:>6} {:>6.1} {:>8.1} {:>8} {:>11}",
+                    r.kind.key(),
+                    r.tools,
+                    r.hours,
+                    r.meters,
+                    r.holes,
+                    r.to_replace
                 );
             }
+            println!(
+                "{:<9} {:>6} {:>6.1} {:>8.1} {:>8} {:>11}",
+                "total",
+                rows.iter().map(|r| r.tools).sum::<usize>(),
+                rows.iter().map(|r| r.hours).sum::<f64>(),
+                rows.iter().map(|r| r.meters).sum::<f64>(),
+                rows.iter().fold(0u64, |s, r| s.saturating_add(r.holes)),
+                rows.iter().map(|r| r.to_replace).sum::<usize>()
+            );
             Ok(())
         }
         "use" => {

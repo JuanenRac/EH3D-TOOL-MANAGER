@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 154 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 175 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.0.9` |
 | Maturità | Impalcatura |
-| Test | 154 |
+| Test | 175 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-tools` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 154 test passano (`cargo test`), con casi normali, casi limite e input danneggiati, e un turno simulato di lavori (rapporti che non sono numeri, utensili spariti, salvataggi che falliscono, un file del magazzino tagliato a metà) con il suo ripristino. |
+| Test | 🟡 | 175 test passano (`cargo test`), con casi normali, casi limite e input danneggiati, e un turno simulato di lavori (rapporti che non sono numeri, utensili spariti, salvataggi che falliscono, un file del magazzino tagliato a metà) con il suo ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`, programma `eh3d-tools-gui`): una tabella degli utensili che si aggiungono, modificano e rimuovono con i controlli della riga di comando, filtri e ricerca, importazione ed esportazione CSV con gli errori della libreria e un calcolatore di avanzamenti e velocità che mostra formule e condizioni; la sua logica è testata, ma non è ancora stata compilata né guardata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -97,6 +97,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **Un magazzino che regge:** il numero di un utensile rimosso non viene più riassegnato (il magazzino conserva `next_id`), un id che non è un numero intero viene indicato come tale, il CSV rifiuta testo dopo le virgolette di chiusura, un testo che inizia come una formula (`=`, `+`, `-`, `@`) viene scritto come testo perché il foglio di calcolo non lo esegua, il materiale ha un limite, `--holes` è un numero intero, un'opzione sconosciuta è un errore e `calc` dice che il risultato per una fresa a V o un incisore è solo un punto di partenza.
 * **La larghezza del taglio di una fresa a V:** `eh3d-tools vbit --depth MM [--angle GRADI] [--flat MM]` calcola `2 x profondità x tan(angolo / 2) + punta piatta` (una fresa da 60 gradi a 0,5 mm dà 0,5774 mm più la punta piatta di 0,1 mm = 0,6774 mm); l'angolo va da 10 a 170 gradi, la profondità da 0 a 100 mm e la punta piatta da 0 a 5 mm, e ciò che non viene indicato è il valore di `tools.cfg`. `calc --depth MM` usa questa larghezza come diametro con cui lavora una fresa a V o un incisore negli avanzamenti e velocità, e il calcolatore della finestra ha un campo per la profondità, mostra la larghezza del taglio e la formula con i suoi numeri; senza profondità i numeri sono quelli di sempre.
 * **Rimettere la scheda precedente:** `eh3d-tools restore FILE.json` sostituisce il file con `FILE.json.bak` (la scheda conservata dall'ultimo salvataggio) dopo aver verificato che la copia si legga, conserva il file sostituito come `FILE.json.damaged` e avverte che quanto salvato dopo quella copia non vi è contenuto; la finestra ha un pulsante "Ripristina copia" per lo stesso scopo. Niente viene mai ripristinato da solo.
+* **Elencare, un utensile per intero, sostituire, togliere e le somme:** `eh3d-tools list FILE.json [--kind TIPO] [--worn] [--sort id|name|wear]` mostra solo un tipo o solo gli utensili usurati, per numero, per nome o i più usurati per primi (e dice `no tool matches` quando nessuno corrisponde); `show FILE.json ID` stampa tutti i valori di un utensile e quanto resta prima di ogni limite; `replace FILE.json ID` mette un utensile nuovo al posto di uno usurato (i contatori tornano a zero, il resto resta e l'archivio precedente è conservato come `.bak`); `remove FILE.json ID` toglie un utensile (il suo numero non viene riassegnato); `stats FILE.json` somma per tipo utensili, ore, metri, fori e utensili da sostituire. Ognuno è una funzione della libreria (`Crib::select`, `Tool::remaining`, `Crib::replace_tool`, `Crib::summary`).
 
 ## 🔒 Sicurezza e protezione
 
@@ -173,7 +174,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 154 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 175 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 

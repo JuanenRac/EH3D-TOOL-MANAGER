@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 154 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 175 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.0.9` |
 | Maturity | Scaffolding |
-| Tests | 154 |
+| Tests | 175 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 154 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated shift of jobs (reports that are not numbers, tools that are gone, saves that fail, a crib file cut in the middle) with its recovery. |
+| Tests | 🟡 | 175 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated shift of jobs (reports that are not numbers, tools that are gone, saves that fail, a crib file cut in the middle) with its recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-tools-gui`): a table of the tools that are added, changed and removed with the checks of the command line, filters and search, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows its formulas and conditions; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -97,6 +97,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **A crib that holds up:** the number of a removed tool is never given again (the crib keeps `next_id`), an id that is not a whole number is told as such, the CSV refuses text after a closing quote, a text that starts like a formula (`=`, `+`, `-`, `@`) is written as text so a spreadsheet does not run it, the material has a limit, `--holes` is a whole number, an unknown option is an error, and `calc` says that the result for a V-bit or an engraver is only a starting point.
 * **The width of the cut of a V-bit:** `eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]` works out `2 x depth x tan(angle / 2) + flat` (a 60 degree bit at 0.5 mm makes 0.5774 mm plus the flat of 0.1 mm = 0.6774 mm); the angle is 10 to 170 degrees, the depth 0 to 100 mm and the flat 0 to 5 mm, and what is not given is the value of `tools.cfg`. `calc --depth MM` uses that width as the diameter a V-bit or an engraver works with in the feeds and speeds, and the calculator of the window has a field for the depth, shows the width of the cut and the formula with its numbers; without a depth the numbers are the ones of always.
 * **Putting the previous crib back:** `eh3d-tools restore FILE.json` replaces the file by `FILE.json.bak` (the crib that the last save kept) after checking that the backup reads, keeps the file it replaces as `FILE.json.damaged` and warns that whatever was saved after the backup is not in it; the window has a "Restore backup" button for the same. Nothing is ever restored by itself.
+* **Listing, one tool in full, replacing, removing and the sums:** `eh3d-tools list FILE.json [--kind KIND] [--worn] [--sort id|name|wear]` shows only a kind or only the worn tools, by number, by name or the most worn first (and says `no tool matches` when nothing does); `show FILE.json ID` prints every value of a tool and what is left before each limit; `replace FILE.json ID` puts a new tool in the place of a worn one (the counters go back to zero, the rest stays, and the previous crib is kept as `.bak`); `remove FILE.json ID` takes a tool out (its number is not given again); `stats FILE.json` adds up the tools, hours, metres, holes and tools to replace by kind. Each one is a function of the library (`Crib::select`, `Tool::remaining`, `Crib::replace_tool`, `Crib::summary`).
 
 ## 🔒 Security & Safety
 
@@ -173,7 +174,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 154 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 175 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

@@ -821,3 +821,409 @@ fn a_crib_saved_with_a_byte_order_mark_is_read() {
     let text = "\u{feff}{\"schema_version\":1,\"tools\":[{\"id\":1,\"name\":\"x\",\"kind\":\"drill\",\"diameter_mm\":1}]}";
     assert_eq!(from_json(text).unwrap().tools.len(), 1);
 }
+
+// ---- a list with filters and an order, one tool in full, a worn tool replaced, a tool removed and the sums by kind ----
+
+use eh3d_tool_manager::model::{Selection, Sort, KINDS};
+use eh3d_tool_manager::sim::SimRng;
+
+/// Four tools: 1 is at 95 % of its hours, 2 has no limits, 3 reached its holes and 4 is almost new.
+fn shop() -> Crib {
+    let mut c = Crib::default();
+    let mut a = drill("Drill 0.8", 0.8);
+    a.max_hours = 10.0;
+    a.hours = 9.5;
+    c.add(a).unwrap();
+    let mut b = Tool::new("end mill 2", Kind::EndMill, 2.0);
+    b.hours = 3.0;
+    b.meters = 12.5;
+    c.add(b).unwrap();
+    let mut v = vbit();
+    v.max_holes = 1000;
+    v.holes = 1000;
+    c.add(v).unwrap();
+    let mut d = drill("alpha drill", 1.0);
+    d.max_hours = 100.0;
+    d.hours = 1.0;
+    c.add(d).unwrap();
+    c
+}
+
+fn shop_file(name: &str) -> (PathBuf, String) {
+    let dir = scratch(name);
+    let file = dir.join("crib.json");
+    save(&shop(), &file).unwrap();
+    let f = file.to_str().unwrap().to_string();
+    (dir, f)
+}
+
+fn ids(list: &[&Tool]) -> Vec<u32> {
+    list.iter().map(|t| t.id).collect()
+}
+
+#[test]
+fn what_is_left_before_each_limit_is_told_and_never_goes_below_zero() {
+    let c = shop();
+    let r = c.get(1).unwrap().remaining();
+    assert_eq!((r.hours, r.holes), (Some(0.5), None));
+    let r = c.get(2).unwrap().remaining();
+    assert_eq!((r.hours, r.holes), (None, None));
+    let r = c.get(3).unwrap().remaining();
+    assert_eq!((r.hours, r.holes), (None, Some(0)));
+    let mut t = drill("over", 1.0);
+    t.max_hours = 2.0;
+    t.hours = 5.0;
+    t.max_holes = 10;
+    t.holes = u64::MAX;
+    let r = t.remaining();
+    assert_eq!((r.hours, r.holes), (Some(0.0), Some(0)));
+}
+
+#[test]
+fn a_replaced_tool_keeps_everything_but_its_counters_and_says_what_they_were() {
+    let mut c = shop();
+    c.tools[0]
+        .extra
+        .insert("note".into(), serde_json::json!("from the drawer"));
+    let before = c.get(1).unwrap().clone();
+    let said = c.replace_tool(1).unwrap();
+    assert_eq!(said, (9.5, 0.0, 0));
+    let after = c.get(1).unwrap();
+    assert_eq!((after.hours, after.meters, after.holes), (0.0, 0.0, 0));
+    assert_eq!(after.wear(), Wear::Good(0.0));
+    let kept = Tool {
+        hours: 0.0,
+        meters: 0.0,
+        holes: 0,
+        ..before
+    };
+    assert_eq!(*after, kept, "only the counters change");
+    assert_eq!(c.tools.len(), 4);
+    assert_eq!(c.next_id, 5);
+}
+
+#[test]
+fn replacing_a_tool_that_is_not_there_changes_nothing() {
+    let mut c = shop();
+    let before = c.clone();
+    assert!(c.replace_tool(99).unwrap_err().contains("no tool 99"));
+    assert_eq!(c, before);
+}
+
+#[test]
+fn a_list_can_show_only_a_kind_or_only_the_worn_tools_or_both() {
+    let c = shop();
+    let all = Selection::default();
+    assert_eq!(ids(&c.select(&all)), vec![1, 2, 3, 4]);
+    let drills = Selection {
+        kind: Some(Kind::Drill),
+        ..all
+    };
+    assert_eq!(ids(&c.select(&drills)), vec![1, 4]);
+    let worn = Selection {
+        worn_only: true,
+        ..all
+    };
+    assert_eq!(ids(&c.select(&worn)), vec![1, 3]);
+    let both = Selection {
+        kind: Some(Kind::VBit),
+        worn_only: true,
+        ..all
+    };
+    assert_eq!(ids(&c.select(&both)), vec![3]);
+    let none = Selection {
+        kind: Some(Kind::Laser),
+        ..all
+    };
+    assert!(c.select(&none).is_empty());
+    assert!(Crib::default().select(&all).is_empty());
+}
+
+#[test]
+fn a_list_can_be_sorted_by_number_by_name_without_regard_to_case_or_by_wear() {
+    let c = shop();
+    let by = |sort| {
+        ids(&c.select(&Selection {
+            sort,
+            ..Selection::default()
+        }))
+    };
+    assert_eq!(by(Sort::Id), vec![1, 2, 3, 4]);
+    // "alpha drill", "Drill 0.8", "end mill 2", "V 30"
+    assert_eq!(by(Sort::Name), vec![4, 1, 2, 3]);
+    // to replace, then 95 %, then 1 %, then the tool with no limit
+    assert_eq!(by(Sort::Wear), vec![3, 1, 4, 2]);
+}
+
+#[test]
+fn the_way_to_sort_is_read_in_any_case_and_a_wrong_word_names_the_three() {
+    assert_eq!(Sort::parse(" WEAR "), Ok(Sort::Wear));
+    assert_eq!(Sort::parse("Name"), Ok(Sort::Name));
+    assert_eq!(Sort::parse("id"), Ok(Sort::Id));
+    assert_eq!(Sort::default(), Sort::Id);
+    let e = Sort::parse("size").unwrap_err();
+    assert!(e.contains("size") && e.contains("id, name or wear"), "{e}");
+    assert!(Sort::parse("").is_err());
+}
+
+#[test]
+fn the_sums_by_kind_follow_the_order_of_the_kinds_and_count_the_worn_tools() {
+    let rows = shop().summary();
+    let kinds: Vec<Kind> = rows.iter().map(|r| r.kind).collect();
+    assert_eq!(kinds, vec![Kind::Drill, Kind::EndMill, Kind::VBit]);
+    assert_eq!(
+        (rows[0].tools, rows[0].hours, rows[0].to_replace),
+        (2, 10.5, 1)
+    );
+    assert_eq!(
+        (rows[1].tools, rows[1].meters, rows[1].to_replace),
+        (1, 12.5, 0)
+    );
+    assert_eq!((rows[2].holes, rows[2].to_replace), (1000, 1));
+    assert!(Crib::default().summary().is_empty());
+    let mut c = Crib::default();
+    for (i, name) in ["a", "b"].into_iter().enumerate() {
+        let mut t = drill(name, 1.0);
+        t.holes = u64::MAX - i as u64;
+        c.add(t).unwrap();
+    }
+    assert_eq!(
+        c.summary()[0].holes,
+        u64::MAX,
+        "the sum stops, it does not wrap"
+    );
+}
+
+#[test]
+fn seeded_cribs_keep_the_order_the_filters_and_the_sums_consistent() {
+    for seed in 1..=25u64 {
+        let mut rng = SimRng::new(seed);
+        let mut c = Crib::default();
+        for i in 0..12 {
+            let kind = KINDS[rng.below(KINDS.len() as u64) as usize];
+            let mut t = Tool::new(
+                &format!("T{}{i}", ["a", "B", "c"][rng.below(3) as usize]),
+                kind,
+                1.0,
+            );
+            if matches!(kind, Kind::VBit | Kind::Engraver) {
+                t.tip_angle_deg = Some(30.0);
+            }
+            t.hours = rng.below(200) as f64 / 10.0;
+            t.meters = rng.below(50) as f64;
+            t.holes = rng.below(3000);
+            if rng.below(2) == 0 {
+                t.max_hours = (10 + rng.below(20)) as f64;
+            }
+            if rng.below(2) == 0 {
+                t.max_holes = 500 + rng.below(2000);
+            }
+            c.add(t).unwrap();
+        }
+        let sel = |sort, worn_only| Selection {
+            kind: None,
+            worn_only,
+            sort,
+        };
+        let by_wear = c.select(&sel(Sort::Wear, false));
+        assert_eq!(by_wear.len(), 12, "seed {seed}");
+        for pair in by_wear.windows(2) {
+            assert!(
+                pair[0].wear().fraction() >= pair[1].wear().fraction(),
+                "seed {seed}"
+            );
+        }
+        let by_name = c.select(&sel(Sort::Name, false));
+        for pair in by_name.windows(2) {
+            assert!(pair[0].name.to_lowercase() <= pair[1].name.to_lowercase());
+        }
+        let worn: Vec<u32> = ids(&c.select(&sel(Sort::Wear, true)));
+        let mut expected: Vec<u32> = c.to_replace().iter().map(|(t, _)| t.id).collect();
+        let mut got = worn.clone();
+        got.sort_unstable();
+        expected.sort_unstable();
+        assert_eq!(got, expected, "seed {seed}");
+        let rows = c.summary();
+        assert_eq!(rows.iter().map(|r| r.tools).sum::<usize>(), 12);
+        assert_eq!(
+            rows.iter().map(|r| r.holes).sum::<u64>(),
+            c.tools.iter().map(|t| t.holes).sum::<u64>()
+        );
+        assert_eq!(
+            rows.iter().map(|r| r.to_replace).sum::<usize>(),
+            expected.len()
+        );
+    }
+}
+
+#[test]
+fn the_list_command_filters_and_sorts_and_says_when_nothing_matches() {
+    let (dir, f) = shop_file("list_filters");
+    let o = cli(&["list", &f, "--worn", "--sort", "wear"]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    let out = text(&o.stdout);
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines.len(), 2, "{out}");
+    assert!(lines[0].contains("V 30") && lines[0].contains("REPLACE"));
+    assert!(lines[1].contains("Drill 0.8") && lines[1].contains("replace soon (95 %)"));
+    let o = cli(&["list", &f, "--kind", "End-Mill"]);
+    assert_eq!(text(&o.stdout).lines().count(), 1);
+    let o = cli(&["list", &f, "--kind", "laser"]);
+    assert!(o.status.success());
+    assert_eq!(text(&o.stdout).trim(), "no tool matches");
+    let o = cli(&["list", &f, "--sort", "name"]);
+    let out = text(&o.stdout);
+    let first = out.lines().next().unwrap();
+    assert!(first.contains("alpha drill"), "{out}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_list_command_refuses_a_kind_or_a_way_to_sort_that_does_not_exist() {
+    let (dir, f) = shop_file("list_refuses");
+    let o = cli(&["list", &f, "--kind", "saw"]);
+    assert!(!o.status.success());
+    assert!(text(&o.stderr).contains("not a kind of tool"));
+    let o = cli(&["list", &f, "--sort", "size"]);
+    assert!(!o.status.success());
+    assert!(text(&o.stderr).contains("id, name or wear"));
+    let o = cli(&["list", &f, "--sort"]);
+    assert!(text(&o.stderr).contains("needs a value"));
+    let o = cli(&["list", &f, "--oops"]);
+    assert!(text(&o.stderr).contains("unknown option"));
+    // an empty crib with no filter prints nothing and is not an error
+    let empty = dir.join("empty.json");
+    assert!(cli(&["init", empty.to_str().unwrap()]).status.success());
+    let o = cli(&["list", empty.to_str().unwrap()]);
+    assert!(o.status.success() && o.stdout.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_show_command_prints_every_value_and_what_is_left_before_the_limits() {
+    let (dir, f) = shop_file("show");
+    let o = cli(&["show", &f, "1"]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    let out = text(&o.stdout);
+    for part in [
+        "tool 1: Drill 0.8",
+        "kind        drill",
+        "diameter    0.8 mm",
+        "used        9.5 h, 0.0 m, 0 holes",
+        "hour limit  10 h (0.5 h left)",
+        "hole limit  no limit",
+        "wear        replace soon (95 %)",
+    ] {
+        assert!(out.contains(part), "missing '{part}' in\n{out}");
+    }
+    assert!(!out.contains("tip angle"));
+    let out = text(&cli(&["show", &f, "3"]).stdout);
+    assert!(out.contains("tip angle   30 degrees"), "{out}");
+    assert!(out.contains("hole limit  1000 (0 left)"), "{out}");
+    assert!(out.contains("hour limit  no limit"), "{out}");
+    assert!(out.contains("wear        REPLACE"), "{out}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_show_command_refuses_a_tool_that_is_not_there_or_a_number_that_is_not_one() {
+    let (dir, f) = shop_file("show_refuses");
+    let o = cli(&["show", &f, "99"]);
+    assert!(!o.status.success() && text(&o.stderr).contains("there is no tool 99"));
+    let o = cli(&["show", &f, "one"]);
+    assert!(text(&o.stderr).contains("'one' is not a tool number"));
+    let o = cli(&["show", &f]);
+    assert!(text(&o.stderr).contains("needs a file and a tool number"));
+    let o = cli(&["show", &f, "1", "2"]);
+    assert!(text(&o.stderr).contains("unexpected argument"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_replace_command_puts_the_counters_back_to_zero_and_keeps_the_previous_crib() {
+    let (dir, f) = shop_file("replace_cmd");
+    let before = std::fs::read_to_string(&f).unwrap();
+    let o = cli(&["replace", &f, "3"]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    assert_eq!(
+        text(&o.stdout).trim(),
+        "tool 3: counters back to zero (they said 0.0 h, 0.0 m, 1000 holes)"
+    );
+    let crib = load(std::path::Path::new(&f)).unwrap();
+    let t = crib.get(3).unwrap();
+    assert_eq!((t.hours, t.holes, t.max_holes), (0.0, 0, 1000));
+    assert_eq!(
+        std::fs::read_to_string(format!("{f}.bak")).unwrap(),
+        before,
+        "the crib that was there is kept"
+    );
+    // only the tool that was close to its limit is left on the list of worn tools
+    let out = text(&cli(&["wear", &f]).stdout);
+    assert!(out.contains("Drill 0.8") && !out.contains("V 30"), "{out}");
+    // a tool that is not there changes nothing
+    let kept = std::fs::read_to_string(&f).unwrap();
+    let o = cli(&["replace", &f, "42"]);
+    assert!(!o.status.success() && text(&o.stderr).contains("there is no tool 42"));
+    assert_eq!(std::fs::read_to_string(&f).unwrap(), kept);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_remove_command_takes_the_tool_out_and_its_number_is_not_given_again() {
+    let (dir, f) = shop_file("remove_cmd");
+    let o = cli(&["remove", &f, "4"]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    assert_eq!(
+        text(&o.stdout).trim(),
+        "tool 4 (alpha drill) removed; its number is not given again"
+    );
+    let crib = load(std::path::Path::new(&f)).unwrap();
+    assert_eq!(crib.tools.len(), 3);
+    assert!(crib.get(4).is_none());
+    let o = cli(&["add", &f, "new drill", "drill", "1.2"]);
+    assert_eq!(text(&o.stdout).trim(), "tool 5 added");
+    // a number that is not there leaves the file as it was
+    let kept = std::fs::read_to_string(&f).unwrap();
+    let o = cli(&["remove", &f, "4"]);
+    assert!(!o.status.success() && text(&o.stderr).contains("there is no tool 4"));
+    assert_eq!(std::fs::read_to_string(&f).unwrap(), kept);
+    let o = cli(&["remove", &f, "-1"]);
+    assert!(text(&o.stderr).contains("is not a tool number"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_stats_command_adds_up_the_tools_by_kind_with_a_total() {
+    let (dir, f) = shop_file("stats_cmd");
+    let o = cli(&["stats", &f]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    let out = text(&o.stdout);
+    let row = |name: &str| -> Vec<String> {
+        out.lines()
+            .find(|l| l.starts_with(name))
+            .unwrap_or_else(|| panic!("no row '{name}' in\n{out}"))
+            .split_whitespace()
+            .map(str::to_string)
+            .collect()
+    };
+    assert_eq!(row("drill"), ["drill", "2", "10.5", "0.0", "0", "1"]);
+    assert_eq!(row("end-mill"), ["end-mill", "1", "3.0", "12.5", "0", "0"]);
+    assert_eq!(row("v-bit"), ["v-bit", "1", "0.0", "0.0", "1000", "1"]);
+    assert_eq!(row("total"), ["total", "4", "13.5", "12.5", "1000", "2"]);
+    assert!(!out.contains("laser"), "a kind with no tool has no row");
+    let empty = dir.join("empty.json");
+    assert!(cli(&["init", empty.to_str().unwrap()]).status.success());
+    let o = cli(&["stats", empty.to_str().unwrap()]);
+    assert_eq!(text(&o.stdout).trim(), "the crib has no tool");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_help_names_the_new_commands_and_their_options() {
+    let out = text(&cli(&["help"]).stdout);
+    for word in [
+        "show", "replace", "remove", "stats", "--kind", "--worn", "--sort",
+    ] {
+        assert!(out.contains(word), "the help does not name {word}");
+    }
+}

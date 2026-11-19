@@ -134,6 +134,21 @@ impl Tool {
         not_negative("max_hours", self.max_hours)
     }
 
+    /// What is left before each limit that is set (`None` for a limit that is not set); a limit that was passed leaves nothing, never a negative number.
+    pub fn remaining(&self) -> Remaining {
+        let hours = if self.max_hours > 0.0 {
+            Some((self.max_hours - self.hours).max(0.0))
+        } else {
+            None
+        };
+        let holes = if self.max_holes > 0 {
+            Some(self.max_holes.saturating_sub(self.holes))
+        } else {
+            None
+        };
+        Remaining { hours, holes }
+    }
+
     /// How worn the tool is: the largest of the fractions of its limits that are set.
     pub fn wear(&self) -> Wear {
         let mut fraction: f64 = 0.0;
@@ -151,6 +166,69 @@ impl Tool {
             Wear::Good(fraction)
         }
     }
+}
+
+/// What is left of a tool before its limits (see `Tool::remaining`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Remaining {
+    /// Hours before the limit of hours; `None` when the tool has no such limit.
+    pub hours: Option<f64>,
+    /// Holes before the limit of holes; `None` when the tool has no such limit.
+    pub holes: Option<u64>,
+}
+
+/// The order of a list of tools (see `Crib::select`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Sort {
+    /// By number, the order of the crib.
+    #[default]
+    Id,
+    /// By name, without regard to upper and lower case.
+    Name,
+    /// The most worn first (a tool to replace before one that is about to be, and one with no limit last).
+    Wear,
+}
+
+impl Sort {
+    /// `id`, `name` or `wear`; anything else is an error that names the three.
+    pub fn parse(text: &str) -> Result<Sort, String> {
+        match text.trim().to_ascii_lowercase().as_str() {
+            "id" => Ok(Sort::Id),
+            "name" => Ok(Sort::Name),
+            "wear" => Ok(Sort::Wear),
+            _ => Err(format!(
+                "'{text}' is not a way to sort the tools (id, name or wear)"
+            )),
+        }
+    }
+}
+
+/// Which tools a list shows and in what order (see `Crib::select`); the default shows every tool by number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Selection {
+    /// Only the tools of this kind.
+    pub kind: Option<Kind>,
+    /// Only the tools that are worn or about to be.
+    pub worn_only: bool,
+    /// The order.
+    pub sort: Sort,
+}
+
+/// What the tools of one kind add up to (see `Crib::summary`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct KindSummary {
+    /// The kind.
+    pub kind: Kind,
+    /// How many tools of the kind there are.
+    pub tools: usize,
+    /// Hours they ran in all.
+    pub hours: f64,
+    /// Metres they travelled in all.
+    pub meters: f64,
+    /// Holes they made in all (a sum that stops at the largest number instead of wrapping round).
+    pub holes: u64,
+    /// How many of them are worn or about to be.
+    pub to_replace: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -264,6 +342,68 @@ impl Crib {
         tool.meters += meters;
         tool.holes = tool.holes.saturating_add(holes);
         Ok(tool.wear())
+    }
+
+    /// Puts a new tool in the place of the one that is worn: the counters go back to zero and everything else (the number, the name, the limits and the keys the program
+    /// does not know) stays. It gives back what the counters said before.
+    pub fn replace_tool(&mut self, id: u32) -> Result<(f64, f64, u64), String> {
+        let tool = self
+            .tools
+            .iter_mut()
+            .find(|t| t.id == id)
+            .ok_or_else(|| format!("there is no tool {id}"))?;
+        let before = (tool.hours, tool.meters, tool.holes);
+        tool.hours = 0.0;
+        tool.meters = 0.0;
+        tool.holes = 0;
+        Ok(before)
+    }
+
+    /// The tools that a list shows: only the kind and the worn ones when asked, in the order asked (ties go by number, so the order never changes between two runs).
+    pub fn select(&self, selection: &Selection) -> Vec<&Tool> {
+        let mut v: Vec<&Tool> = self
+            .tools
+            .iter()
+            .filter(|t| selection.kind.is_none_or(|k| t.kind == k))
+            .filter(|t| !selection.worn_only || !matches!(t.wear(), Wear::Good(_)))
+            .collect();
+        match selection.sort {
+            Sort::Id => v.sort_by_key(|t| t.id),
+            Sort::Name => v.sort_by_key(|t| (t.name.to_lowercase(), t.id)),
+            Sort::Wear => v.sort_by(|a, b| {
+                rank(&b.wear())
+                    .partial_cmp(&rank(&a.wear()))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then(a.id.cmp(&b.id))
+            }),
+        }
+        v
+    }
+
+    /// What the tools add up to, one row for each kind that has a tool (in the order of `KINDS`).
+    pub fn summary(&self) -> Vec<KindSummary> {
+        KINDS
+            .into_iter()
+            .filter_map(|kind| {
+                let of_kind: Vec<&Tool> = self.tools.iter().filter(|t| t.kind == kind).collect();
+                if of_kind.is_empty() {
+                    return None;
+                }
+                Some(KindSummary {
+                    kind,
+                    tools: of_kind.len(),
+                    hours: of_kind.iter().map(|t| t.hours).sum(),
+                    meters: of_kind.iter().map(|t| t.meters).sum(),
+                    holes: of_kind
+                        .iter()
+                        .fold(0u64, |sum, t| sum.saturating_add(t.holes)),
+                    to_replace: of_kind
+                        .iter()
+                        .filter(|t| !matches!(t.wear(), Wear::Good(_)))
+                        .count(),
+                })
+            })
+            .collect()
     }
 
     /// The tools that are worn or about to be, worst first.
