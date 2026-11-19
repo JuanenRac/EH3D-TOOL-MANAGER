@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.0] - Filtered lists, show, replace, remove and statistics of the tool crib
+
 - **A list that shows only what you ask for:** `eh3d-tools list FILE.json [--kind KIND] [--worn] [--sort id|name|wear]` shows only the tools of a kind, only the ones that are worn or about to be, or both, by number (as before), by name without regard to upper and lower case or the most worn first (a tool to replace, then the ones at 95 %, and a tool with no limit last; ties go by number so the order is the same every time); a kind or a way to sort that does not exist is an error that names the choices, and a list that matches nothing says `no tool matches`. The library has it as `Crib::select` with `Selection` and `Sort`. Tested with every combination on a sample crib, the refusals and 25 seeded cribs whose order, filters and sums agree.
 
 - **One tool in full, and what is left before its limits:** `eh3d-tools show FILE.json ID` prints every value of a tool (kind, diameter, flutes, length, tip angle, shank, material, hours, metres, holes) and, for each limit that is set, how much is left (`10 h (0.5 h left)`, `1000 (0 left)`) or `no limit`; the library has `Tool::remaining`, which never gives a negative number for a limit that was passed. Tested with a tool at 95 % of its hours, one with no limits, one at its hole limit and a tool or a number that does not exist.
