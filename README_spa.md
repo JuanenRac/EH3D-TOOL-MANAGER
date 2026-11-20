@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-tools`) con 175 pruebas que se ejecutan en un ordenador: guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material. Una ventana (`eh3d-tools-gui`, compilada con la característica `gui`) está escrita y su lógica está probada, pero no se ha compilado ni mirado en una pantalla; nada se ha probado en una máquina y nada se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-tools`) con 198 pruebas que se ejecutan en un ordenador: guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material. Una ventana (`eh3d-tools-gui`, compilada con la característica `gui`) está escrita y su lógica está probada, pero no se ha compilado ni mirado en una pantalla; nada se ha probado en una máquina y nada se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versión | `0.1.0` |
 | Madurez | Andamiaje |
-| Pruebas | 175 |
+| Pruebas | 198 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -47,7 +47,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 |---|---|---|
 | Núcleo | 🟡 | guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material; probado en un ordenador con entradas normales y dañadas, no con una colección de ficheros reales. |
 | Línea de comandos | 🟡 | `eh3d-tools` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 175 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas, y un turno simulado de trabajos (informes que no son números, herramientas que ya no están, guardados que fallan, un archivo del almacén cortado a medias) con su recuperación. |
+| Pruebas | 🟡 | 198 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas, y un turno simulado de trabajos (informes que no son números, herramientas que ya no están, guardados que fallan, un archivo del almacén cortado a medias) con su recuperación. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-tools-gui`): una tabla de herramientas que se añaden, cambian y quitan con las comprobaciones de la línea de comandos, filtros y búsqueda, importación y exportación de CSV con los errores de la biblioteca y una calculadora de avances y velocidades que muestra sus fórmulas y condiciones; su lógica está probada, pero aún no se ha compilado ni mirado en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -156,6 +156,8 @@ EH3D-TOOL-MANAGER/
 
 El fichero de configuración es `tools.cfg` en la carpeta del programa (la variable `EH3D_TOOLS_DIR`, o `%APPDATA%\eh3d-tools` en Windows, o `~/.config/eh3d-tools` en otros sistemas), leído por la ventana y por la orden `calc`: el idioma y el tamaño de la ventana, el fichero del almacén, la velocidad del husillo con la que arranca la calculadora y cada número con el que se calculan los avances y velocidades (la velocidad de corte y el avance por diente de cada material, los factores de la penetración y de la profundidad de pasada, y `v_bit_angle_deg` y `v_bit_flat_mm`, el ángulo (de 10 a 170 grados, 60 por defecto) y el ancho de la punta plana (de 0 a 5 mm, 0,1 por defecto) con que se calcula una fresa en V) son líneas `clave = valor`, con sus límites comprobados y una línea mala nombrada en el error. `tools.cfg.example` enumera cada clave con su valor por defecto. Aparte de eso, lo que elige la persona se da como argumentos de la línea de comandos (véase Interfaces) y cada valor por defecto está escrito en la ayuda de la orden (`eh3d-tools help`). Los límites de un valor son constantes con nombre del código y las pruebas los cubren.
 
+**Modo servidor.** `push` guarda la tabla de herramientas en el servidor EH3D como una nueva revisión de un proyecto (`tool-crib` por defecto; `--name` elige otro), `pull` lee de vuelta la última revisión en un archivo (un archivo distinto se conserva si no se da `--force`, y su copia anterior queda como `.bak`) e `history` lista las revisiones, de modo que la tabla de herramientas sea la misma en todos los ordenadores del taller. El enlace es el cliente único de la suite (`eh3d-serverclient` de EH3D-COMMON) y sus claves van en el archivo de ajustes: `server_address` (`host:port`; vacío significa apagado), `server_token` (solo escritura, nunca se muestra), `server_machine`, `server_timeout_s` (1 a 120, 15 por defecto), `server_retries` (0 a 5, 2 por defecto), `server_mdns` (`off` por defecto) y `server_max_answer_mib` (1 a 256, 8 por defecto). Las negativas del servidor se explican por su código en el idioma del sistema. `eh3d-tools server status` muestra los ajustes (el token como `***`) y lo que responde el servidor. No se envía nada sin dirección y el trabajo local nunca depende del servidor.
+
 ## 🚀 Inicio rápido
 
 Necesita una cadena de herramientas Rust estable (1.95 o más reciente).
@@ -174,7 +176,7 @@ Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot 
 
 ## 🧪 Pruebas
 
-El conjunto tiene 175 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` (también con `--features gui`) con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 198 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` (también con `--features gui`) con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 

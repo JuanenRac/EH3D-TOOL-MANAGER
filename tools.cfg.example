@@ -55,3 +55,18 @@ max_pass_mm = 1.0
 v_bit_angle_deg = 60
 # The width of the flat tip of a V-bit, in mm (0 to 5; 0 is a sharp point).
 v_bit_flat_mm = 0.1
+
+# The link to the EH3D server (the keys are checked with their ranges; the mode is off until server_address is set).
+# The address of the server, host:port.
+# server_address = 192.168.0.180:18200
+# The token of this program, made by the administrator of the server (write-only: it is never shown).
+# server_token = eh3d_the-token-made-for-this-program
+# The machine the server works for, when it is one of several.
+# server_machine = bungard
+# How long one try of a request may take, in seconds (1 to 120), and how many more tries a failure of the network gets (0 to 5).
+# server_timeout_s = 15
+# server_retries = 2
+# Look for the server on the local network: on or off (off by default).
+# server_mdns = off
+# The most MiB read from one answer of the server (1 to 256).
+# server_max_answer_mib = 8

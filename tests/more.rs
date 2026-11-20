@@ -509,3 +509,303 @@ fn a_key_the_program_does_not_know_survives_a_load_and_a_save() {
     assert_eq!(out["tools"][0]["notes"]["batch"][1], 2);
     assert!(out["tools"][1].get("vendor").is_none());
 }
+
+// ---- the crib on the EH3D server ----
+
+/// A server of the computer that answers the requests it gets with `replies`, one each in order, and gives back the requests.
+fn sequence_server(replies: Vec<(&str, String)>) -> (String, std::thread::JoinHandle<Vec<String>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap().to_string();
+    let replies: Vec<(String, String)> = replies
+        .into_iter()
+        .map(|(status, body)| (status.to_string(), body))
+        .collect();
+    let handle = std::thread::spawn(move || {
+        let mut heads = Vec::new();
+        for (status, body) in replies {
+            let Ok((mut s, _)) = listener.accept() else {
+                break;
+            };
+            let mut buf = vec![0u8; 262_144];
+            let mut got = 0;
+            loop {
+                let k = s.read(&mut buf[got..]).unwrap_or(0);
+                if k == 0 {
+                    break;
+                }
+                got += k;
+                let text = String::from_utf8_lossy(&buf[..got]).to_string();
+                if let Some(split) = text.find("\r\n\r\n") {
+                    let want = text[..split]
+                        .lines()
+                        .find_map(|l| {
+                            l.to_ascii_lowercase()
+                                .strip_prefix("content-length:")
+                                .and_then(|v| v.trim().parse::<usize>().ok())
+                        })
+                        .unwrap_or(0);
+                    if got >= split + 4 + want {
+                        break;
+                    }
+                }
+            }
+            heads.push(String::from_utf8_lossy(&buf[..got]).to_string());
+            let reply = format!(
+                "HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = s.write_all(reply.as_bytes());
+        }
+        heads
+    });
+    (address, handle)
+}
+
+fn linked_dir(tag: &str, address: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("eh3d_tools_server_{tag}_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("tools.cfg"),
+        format!("server_address = {address}\nserver_token = program-token\nserver_retries = 0\nserver_timeout_s = 5\n"),
+    )
+    .unwrap();
+    dir
+}
+
+fn tools_in(dir: &std::path::Path, args: &[&str]) -> (bool, String, String) {
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_eh3d-tools"))
+        .args(args)
+        .env("EH3D_TOOLS_DIR", dir)
+        .output()
+        .expect("the program runs");
+    (
+        out.status.success(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+fn crib_file(dir: &std::path::Path, tools: &[&str]) -> String {
+    let mut crib = Crib::default();
+    for name in tools {
+        crib.add(drill(name)).unwrap();
+    }
+    let file = dir.join("crib.json");
+    eh3d_tool_manager::store::save(&crib, &file).unwrap();
+    file.to_str().unwrap().to_string()
+}
+
+#[test]
+fn the_crib_is_pushed_as_a_new_revision_of_a_project_of_the_server() {
+    let (address, handle) = sequence_server(vec![
+        (
+            "201 Created",
+            "{\"artifact_id\":\"a-1\",\"blob_sha256\":\"ff\",\"size\":9}".into(),
+        ),
+        ("200 OK", "[]".into()),
+        (
+            "201 Created",
+            "{\"id\":\"p-1\",\"name\":\"tool-crib\",\"owner\":\"u\"}".into(),
+        ),
+        (
+            "201 Created",
+            "{\"number\":1,\"artifact_id\":\"a-1\"}".into(),
+        ),
+    ]);
+    let dir = linked_dir("push", &address);
+    let file = crib_file(&dir, &["d1", "d2"]);
+    let (ok, out, err) = tools_in(&dir, &["push", &file]);
+    assert!(ok, "{err}");
+    assert!(
+        out.contains("pushed 2 tools to the project 'tool-crib'")
+            && out.contains("revision 1, new project"),
+        "{out}"
+    );
+    let heads = handle.join().unwrap();
+    assert!(
+        heads[0].starts_with("POST /api/v1/artifacts HTTP/1.1"),
+        "{}",
+        heads[0]
+    );
+    assert!(
+        heads[0].contains("\"name\":\"tool-crib.json\"")
+            && heads[0].contains("\"format\":\"application/json\""),
+        "{}",
+        heads[0]
+    );
+    assert!(heads[0].contains("Bearer program-token"));
+    assert!(
+        heads[1].starts_with("GET /api/v1/projects HTTP/1.1"),
+        "{}",
+        heads[1]
+    );
+    assert!(heads[2].contains("\"name\":\"tool-crib\""), "{}", heads[2]);
+    assert!(
+        heads[3].starts_with("POST /api/v1/projects/p-1/revisions"),
+        "{}",
+        heads[3]
+    );
+    assert!(
+        heads[3].contains("\"artifact_id\":\"a-1\"") && heads[3].contains("\"parent\":0"),
+        "{}",
+        heads[3]
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_last_revision_is_pulled_into_a_file_and_an_older_file_is_not_replaced_without_force() {
+    let mut remote = Crib::default();
+    remote.add(drill("from-the-server")).unwrap();
+    let text = eh3d_tool_manager::store::to_json(&remote);
+    let replies = |text: &str| {
+        vec![
+            ("200 OK", "[{\"id\":\"p-1\",\"name\":\"shop\",\"owner\":\"u\",\"head\":1}]".to_string()),
+            ("200 OK", "{\"id\":\"p-1\",\"name\":\"shop\",\"owner\":\"u\",\"head\":1,\"revisions\":[{\"number\":1,\"artifact_id\":\"a-1\",\"by\":\"u\"}]}".to_string()),
+            ("200 OK", text.to_string()),
+        ]
+    };
+    let (address, handle) = sequence_server(replies(&text));
+    let dir = linked_dir("pull", &address);
+    let target = dir.join("pulled.json");
+    let t = target.to_str().unwrap();
+    let (ok, out, err) = tools_in(&dir, &["pull", t, "--name", "shop"]);
+    assert!(ok, "{err}");
+    assert!(
+        out.contains("pulled revision 1 of 'shop' (1 tools)"),
+        "{out}"
+    );
+    let heads = handle.join().unwrap();
+    assert!(
+        heads[2].starts_with("GET /api/v1/artifacts/a-1 HTTP/1.1"),
+        "{}",
+        heads[2]
+    );
+    let got = eh3d_tool_manager::store::load(&target).unwrap();
+    assert_eq!(got.tools[0].name, "from-the-server");
+    // a file that differs is kept unless --force says otherwise
+    let other = crib_file(&dir, &["local-only"]);
+    let (address, handle) = sequence_server(replies(&text));
+    std::fs::write(
+        dir.join("tools.cfg"),
+        format!("server_address = {address}\nserver_token = program-token\nserver_retries = 0\n"),
+    )
+    .unwrap();
+    let (ok, _, err) = tools_in(&dir, &["pull", &other, "--name", "shop"]);
+    assert!(
+        !ok && err.contains("--force") && err.contains("revision 1"),
+        "{err}"
+    );
+    assert_eq!(
+        eh3d_tool_manager::store::load(std::path::Path::new(&other))
+            .unwrap()
+            .tools[0]
+            .name,
+        "local-only"
+    );
+    drop(handle);
+    let (address, handle) = sequence_server(replies(&text));
+    std::fs::write(
+        dir.join("tools.cfg"),
+        format!("server_address = {address}\nserver_token = program-token\nserver_retries = 0\n"),
+    )
+    .unwrap();
+    let (ok, _, err) = tools_in(&dir, &["pull", &other, "--name", "shop", "--force"]);
+    handle.join().unwrap();
+    assert!(ok, "{err}");
+    assert_eq!(
+        eh3d_tool_manager::store::load(std::path::Path::new(&other))
+            .unwrap()
+            .tools[0]
+            .name,
+        "from-the-server"
+    );
+    assert!(dir.join("crib.json.bak").exists(), "the old copy is kept");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_history_lists_the_revisions_and_a_missing_project_is_told() {
+    let (address, handle) = sequence_server(vec![
+        ("200 OK", "[{\"id\":\"p-1\",\"name\":\"tool-crib\",\"owner\":\"u\",\"head\":2}]".into()),
+        ("200 OK", "{\"id\":\"p-1\",\"name\":\"tool-crib\",\"owner\":\"u\",\"head\":2,\"revisions\":[{\"number\":2,\"artifact_id\":\"a-9\",\"by\":\"ana\"},{\"number\":1,\"artifact_id\":\"a-3\",\"by\":\"ana\"}]}".into()),
+    ]);
+    let dir = linked_dir("history", &address);
+    let (ok, out, err) = tools_in(&dir, &["history"]);
+    handle.join().unwrap();
+    assert!(ok, "{err}");
+    let first = out.find("revision 1").expect("revision 1");
+    let second = out.find("revision 2").expect("revision 2");
+    assert!(
+        first < second && out.contains("a-3") && out.contains("by ana"),
+        "{out}"
+    );
+    let (address, handle) = sequence_server(vec![("200 OK", "[]".into())]);
+    std::fs::write(
+        dir.join("tools.cfg"),
+        format!("server_address = {address}\nserver_token = program-token\nserver_retries = 0\n"),
+    )
+    .unwrap();
+    let (ok, _, err) = tools_in(&dir, &["history", "--name", "nothing"]);
+    handle.join().unwrap();
+    assert!(!ok && err.contains("no project named 'nothing'"), "{err}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn without_a_server_the_new_commands_say_so_and_the_local_ones_do_not_care() {
+    let dir = std::env::temp_dir().join(format!("eh3d_tools_server_off_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = crib_file(&dir, &["d1"]);
+    for args in [
+        vec!["push", file.as_str()],
+        vec!["pull", file.as_str()],
+        vec!["history"],
+    ] {
+        let (ok, _, err) = tools_in(&dir, &args);
+        assert!(!ok && err.contains("server mode is off"), "{args:?}: {err}");
+    }
+    let (ok, out, _) = tools_in(&dir, &["list", &file]);
+    assert!(ok && out.contains("d1"));
+    let (ok, out, _) = tools_in(&dir, &["server", "status"]);
+    assert!(ok && out.contains("server mode is off"), "{out}");
+    let (ok, _, err) = tools_in(&dir, &["server", "restart"]);
+    assert!(!ok && err.contains("unknown"), "{err}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_keys_of_the_link_in_tools_cfg_have_their_ranges_and_the_status_hides_the_token() {
+    let (address, handle) = sequence_server(vec![(
+        "200 OK",
+        "{\"name\":\"eh3d-server\",\"version\":\"0.1.8\",\"api_revision\":1,\"status\":\"ok\"}"
+            .into(),
+    )]);
+    let dir = linked_dir("status", &address);
+    let (ok, out, err) = tools_in(&dir, &["server", "status"]);
+    handle.join().unwrap();
+    assert!(ok, "{err}");
+    assert!(
+        out.contains("server_token = ***") && !out.contains("program-token"),
+        "{out}"
+    );
+    assert!(out.contains("eh3d-server 0.1.8 (ok, api 1)"), "{out}");
+    let file = crib_file(&dir, &["d1"]);
+    for (text, word) in [
+        ("server_timeout_s = 0\n", "server_timeout_s"),
+        ("server_retries = 6\n", "server_retries"),
+        ("server_mdns = maybe\n", "server_mdns"),
+        ("server_address = a b\n", "server_address"),
+    ] {
+        std::fs::write(dir.join("tools.cfg"), format!("language = en\n{text}")).unwrap();
+        let (ok, _, err) = tools_in(&dir, &["list", &file]);
+        assert!(
+            !ok && err.contains(word) && err.contains("line 2"),
+            "{text}: {err}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

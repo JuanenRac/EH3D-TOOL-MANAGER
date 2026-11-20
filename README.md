@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 175 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 198 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.1.0` |
 | Maturity | Scaffolding |
-| Tests | 175 |
+| Tests | 198 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 175 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated shift of jobs (reports that are not numbers, tools that are gone, saves that fail, a crib file cut in the middle) with its recovery. |
+| Tests | 🟡 | 198 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated shift of jobs (reports that are not numbers, tools that are gone, saves that fail, a crib file cut in the middle) with its recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-tools-gui`): a table of the tools that are added, changed and removed with the checks of the command line, filters and search, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows its formulas and conditions; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -156,6 +156,8 @@ EH3D-TOOL-MANAGER/
 
 The configuration file is `tools.cfg` in the folder of the program (the variable `EH3D_TOOLS_DIR`, or `%APPDATA%\eh3d-tools` on Windows, or `~/.config/eh3d-tools` elsewhere), read by the window and by the `calc` command: the language and the size of the window, the file of the crib, the spindle speed the calculator starts with and every number the feeds and speeds are worked out with (the surface speed and the chip load of each material, the factors of the plunge and of the depth of a pass, and `v_bit_angle_deg` and `v_bit_flat_mm`, the angle (10 to 170 degrees, 60 by default) and the width of the flat tip (0 to 5 mm, 0.1 by default) a V-bit is worked out with) are lines `key = value`, with their limits checked and a bad line named in the error. `tools.cfg.example` lists every key with its default. Apart from it, what a person chooses is given as arguments of the command line (see Interfaces) and every default is written in the help of the command (`eh3d-tools help`). The limits of a value are named constants of the code and are covered by tests.
 
+**Server mode.** `push` keeps the crib on the EH3D server as a new revision of a project (`tool-crib` by default, `--name` chooses another), `pull` reads the last revision back into a file (a file that differs is kept unless `--force` is given, and its old copy stays as `.bak`) and `history` lists the revisions, so the tool table is the same on every computer of the workshop. The link is the one client of the suite (`eh3d-serverclient` of EH3D-COMMON) and its keys go in the settings file: `server_address` (`host:port`; empty means off), `server_token` (write-only, never shown), `server_machine`, `server_timeout_s` (1 to 120, 15 by default), `server_retries` (0 to 5, 2 by default), `server_mdns` (`off` by default) and `server_max_answer_mib` (1 to 256, 8 by default). The refusals of the server are told by their code in the language of the system. `eh3d-tools server status` shows the settings (the token as `***`) and what the server answers. Nothing is sent without an address and the local work never depends on the server.
+
 ## 🚀 Quick start
 
 You need a stable Rust toolchain (1.95 or newer).
@@ -174,7 +176,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 175 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 198 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 

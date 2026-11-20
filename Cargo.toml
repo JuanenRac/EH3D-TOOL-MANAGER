@@ -28,6 +28,7 @@ default = []
 gui = ["dep:eframe", "dep:png"]
 
 [dependencies]
+eh3d-serverclient = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/serverclient" }
 serde_json = "1"
 
 # the window

@@ -18,7 +18,7 @@
 
 ---
 
-**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 175 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
+**Verificação de honestidade - o que funciona hoje:** uma biblioteca Rust e um programa de linha de comandos (`eh3d-tools`) com 198 testes que correm num computador: guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material. Uma janela (`eh3d-tools-gui`, compilada com a funcionalidade `gui`) está escrita e a sua lógica está testada, mas não foi compilada nem vista num ecrã; nada foi experimentado numa máquina e nada foi verificado com uma coleção de ficheiros reais.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versão | `0.1.0` |
 | Maturidade | Estrutura inicial |
-| Testes | 175 |
+| Testes | 198 |
 | Tecnologias | Rust |
 | Em hardware real | Não experimentado: nada disto correu numa máquina |
 
@@ -47,7 +47,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 |---|---|---|
 | Núcleo | 🟡 | guarda as ferramentas com a sua geometria e desgaste, armazena-as em JSON ou CSV e calcula avanços e velocidades de partida por material; testado num computador com entradas normais e danificadas, não com uma coleção de ficheiros reais. |
 | Linha de comandos | 🟡 | `eh3d-tools` executa as mesmas funções da biblioteca e imprime o resultado; cada erro volta como mensagem e código de saída diferente de zero. |
-| Testes | 🟡 | 175 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas, e um turno simulado de trabalhos (relatórios que não são números, ferramentas que já não existem, gravações que falham, um ficheiro do armazém cortado a meio) com a sua recuperação. |
+| Testes | 🟡 | 198 testes passam (`cargo test`), com casos normais, casos-limite e entradas danificadas, e um turno simulado de trabalhos (relatórios que não são números, ferramentas que já não existem, gravações que falham, um ficheiro do armazém cortado a meio) com a sua recuperação. |
 | Segurança | 🟡 | Rust seguro e simples (`forbid(unsafe_code)`): nada entra em pânico com os ficheiros recebidos e um valor mau é um erro com o seu motivo; sem revisão independente. |
 | Janela | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-tools-gui`): uma tabela das ferramentas que se adicionam, alteram e removem com as verificações da linha de comandos, filtros e pesquisa, importação e exportação de CSV com os erros da biblioteca e uma calculadora de avanços e velocidades que mostra as suas fórmulas e condições; a sua lógica está testada, mas ainda não foi compilada nem vista num ecrã. |
 | Hardware real | 🔴 | Não experimentado: nada disto foi executado numa máquina. |
@@ -156,6 +156,8 @@ EH3D-TOOL-MANAGER/
 
 O ficheiro de configuração é `tools.cfg`, na pasta do programa (a variável `EH3D_TOOLS_DIR`, ou `%APPDATA%\eh3d-tools` no Windows, ou `~/.config/eh3d-tools` nos outros sistemas), lido pela janela e pelo comando `calc`: o idioma e o tamanho da janela, o ficheiro do armazém, a velocidade do fuso com que a calculadora arranca e cada número com que se calculam os avanços e velocidades (a velocidade de corte e o avanço por dente de cada material, os fatores da penetração e da profundidade de passagem, e `v_bit_angle_deg` e `v_bit_flat_mm`, o ângulo (de 10 a 170 graus, 60 por omissão) e a largura da ponta plana (de 0 a 5 mm, 0,1 por omissão) com que se calcula uma fresa em V) são linhas `chave = valor`, com os limites verificados e uma linha má nomeada no erro. `tools.cfg.example` lista cada chave com o valor por omissão. Para além disso, o que a pessoa escolhe é dado como argumentos da linha de comandos (ver Interfaces) e cada valor por omissão está escrito na ajuda do comando (`eh3d-tools help`). Os limites de um valor são constantes com nome no código, cobertas por testes.
 
+**Modo servidor.** `push` guarda a tabela de ferramentas no servidor EH3D como uma nova revisão de um projeto (`tool-crib` por omissão; `--name` escolhe outro), `pull` lê de volta a última revisão para um ficheiro (um ficheiro diferente é mantido sem `--force`, e a sua cópia antiga fica como `.bak`) e `history` lista as revisões, de modo que a tabela de ferramentas seja a mesma em todos os computadores da oficina. A ligação é o cliente único da suite (`eh3d-serverclient` do EH3D-COMMON) e as suas chaves ficam no ficheiro de definições: `server_address` (`host:port`; vazio significa desligado), `server_token` (só de escrita, nunca é mostrado), `server_machine`, `server_timeout_s` (1 a 120, 15 por omissão), `server_retries` (0 a 5, 2 por omissão), `server_mdns` (`off` por omissão) e `server_max_answer_mib` (1 a 256, 8 por omissão). As recusas do servidor são explicadas pelo seu código no idioma do sistema. `eh3d-tools server status` mostra as definições (o token como `***`) e o que o servidor responde. Não se envia nada sem endereço e o trabalho local nunca depende do servidor.
+
 ## 🚀 Início rápido
 
 Precisa de uma cadeia de ferramentas Rust estável (1.95 ou mais recente).
@@ -174,7 +176,7 @@ Para tirar uma captura da janela sem a abrir à mão, execute-o com `--shot FICH
 
 ## 🧪 Testes
 
-O conjunto tem 175 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
+O conjunto tem 198 testes (`cargo test`, executados em Windows e Linux no CI). Verificam os casos normais, os casos-limite e as entradas danificadas: ficheiros vazios, lixo e ficheiros cortados nunca provocam pânico. O CI executa ainda `cargo fmt --check`, `cargo clippy` (também com `--features gui`) com avisos como erros e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilação e publicação
 

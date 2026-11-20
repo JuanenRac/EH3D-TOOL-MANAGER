@@ -39,6 +39,9 @@ pub struct Settings {
     pub default_max_rpm: f64,
     /// The largest crib or CSV file that is read, in MiB; a bigger one is refused with the code `file_too_large`.
     pub max_file_mib: u64,
+    /// The link to the EH3D server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`): off until
+    /// `server_address` is set.
+    pub server: eh3d_serverclient::Settings,
     pub params: CalcParams,
 }
 
@@ -51,6 +54,7 @@ impl Default for Settings {
             crib_file: None,
             default_max_rpm: DEFAULT_MAX_RPM,
             max_file_mib: DEFAULT_MAX_FILE_MIB,
+            server: eh3d_serverclient::Settings::default(),
             params: CalcParams::default(),
         }
     }
@@ -152,6 +156,11 @@ impl Settings {
                 }
                 "max_file_mib" => {
                     s.max_file_mib = u64::from(whole(line, key, value, MAX_FILE_MIB_LIMITS)?);
+                }
+                k if crate::server::is_server_key(k) => {
+                    s.server
+                        .set(k, value)
+                        .map_err(|e| format!("{CONFIG_FILE} line {line}: {e}"))?;
                 }
                 "working_min_mm" => p.working_min_mm = float(line, key, value, WORKING_LIMITS)?,
                 "working_max_mm" => p.working_max_mm = float(line, key, value, WORKING_LIMITS)?,

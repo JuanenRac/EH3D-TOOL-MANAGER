@@ -7,7 +7,7 @@ mod cli_args;
 use eh3d_tool_manager::calc::{feeds_speeds_traced_at, v_bit_width_mm, Material};
 use eh3d_tool_manager::model::{Crib, Kind, Selection, Sort, Tool, Wear};
 use eh3d_tool_manager::settings::{data_dir, Settings};
-use eh3d_tool_manager::{csv, files, store};
+use eh3d_tool_manager::{csv, files, server, store, sync};
 use std::env;
 use std::path::Path;
 use std::process::ExitCode;
@@ -28,6 +28,10 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools restore FILE.json               put back FILE.json.bak (kept by the last save); the file it replaces is kept as FILE.json.damaged
   eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG] [--depth MM]
   eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]     the width of the cut of a V-bit at a depth
+  eh3d-tools push FILE.json [--name NAME]     keep the crib on the EH3D server as a new revision of the project NAME (tool-crib by default)
+  eh3d-tools pull FILE.json [--name NAME] [--force]   read the last revision of the project back into FILE.json (a file that differs is kept unless --force; the old copy is kept as FILE.json.bak)
+  eh3d-tools history [--name NAME]            the revisions of the project, the oldest first
+  eh3d-tools server [status]                  the link to the EH3D server (server_address, server_token, server_machine, server_timeout_s, server_retries, server_mdns and server_max_answer_mib of tools.cfg) and what the server answers
 
 KIND: drill, end-mill, v-bit, engraver, laser, nozzle. MATERIAL: fr4, aluminium, acrylic, wood, brass.
 vbit works out 2 x depth x tan(angle / 2) + flat (the angle is 10 to 170 degrees, 60 and the flat 0.1 mm by default, both set in tools.cfg); calc --depth uses that width as the diameter a V-bit or an engraver works with.
@@ -116,6 +120,13 @@ fn max_mib() -> Result<u64, String> {
     Ok(Settings::load(&data_dir())?.max_file_mib)
 }
 
+/// The link to the EH3D server from `tools.cfg`, with an address and a token.
+fn link() -> Result<eh3d_serverclient::Settings, String> {
+    let settings = Settings::load(&data_dir())?.server;
+    server::require(&settings)?;
+    Ok(settings)
+}
+
 fn run(mut args: Vec<String>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].as_str(), "help" | "--help" | "-h") {
         println!("{HELP}");
@@ -130,6 +141,102 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         }
     };
     match cmd.as_str() {
+        "server" => {
+            cli_args::finish(&args, 1)?;
+            match args.first().map(String::as_str) {
+                Some("status") | None => {}
+                Some(other) => return Err(format!("server {other}: unknown (use: server status)")),
+            }
+            print!(
+                "{}",
+                server::status_report(Settings::load(&data_dir())?.server)?
+            );
+            Ok(())
+        }
+        "push" => {
+            let name = cli_args::flag(&mut args, "--name")?
+                .unwrap_or_else(|| sync::DEFAULT_NAME.to_string());
+            need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
+            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
+            let mut client = server::connect(link()?);
+            let done = sync::push(
+                &mut client,
+                &name,
+                store::to_json(&crib).as_bytes(),
+                server::language(),
+            )?;
+            println!(
+                "pushed {} tools to the project '{}' of the server: revision {}{} (artifact {})",
+                crib.tools.len(),
+                name.trim(),
+                done.revision,
+                if done.created { ", new project" } else { "" },
+                done.artifact_id
+            );
+            Ok(())
+        }
+        "pull" => {
+            let name = cli_args::flag(&mut args, "--name")?
+                .unwrap_or_else(|| sync::DEFAULT_NAME.to_string());
+            let force = cli_args::switch(&mut args, "--force");
+            need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
+            let file = Path::new(&args[0]);
+            let mut client = server::connect(link()?);
+            let got = sync::pull(&mut client, &name, server::language())?;
+            let crib = store::from_json(&got.text).map_err(|e| {
+                format!(
+                    "revision {} of '{}' is not a crib: {e}",
+                    got.revision,
+                    name.trim()
+                )
+            })?;
+            if file.exists() && !force {
+                let same = store::load_with_limit(file, max_mib()?)
+                    .map(|local| store::to_json(&local) == store::to_json(&crib))
+                    .unwrap_or(false);
+                if same {
+                    println!(
+                        "{} is already revision {} of '{}'",
+                        args[0],
+                        got.revision,
+                        name.trim()
+                    );
+                    return Ok(());
+                }
+                return Err(format!(
+                    "{}: already exists and differs from revision {}; use --force to replace it (the old copy is kept as {}.bak)",
+                    args[0], got.revision, args[0]
+                ));
+            }
+            store::save(&crib, file)?;
+            println!(
+                "pulled revision {} of '{}' ({} tools) into {}",
+                got.revision,
+                name.trim(),
+                crib.tools.len(),
+                args[0]
+            );
+            Ok(())
+        }
+        "history" => {
+            let name = cli_args::flag(&mut args, "--name")?
+                .unwrap_or_else(|| sync::DEFAULT_NAME.to_string());
+            cli_args::finish(&args, 0)?;
+            let mut client = server::connect(link()?);
+            let revisions = sync::history(&mut client, &name, server::language())?;
+            if revisions.is_empty() {
+                println!("the project '{}' has no revision yet", name.trim());
+            }
+            for r in revisions {
+                println!(
+                    "revision {}  artifact {}  by {}",
+                    r.number, r.artifact_id, r.by
+                );
+            }
+            Ok(())
+        }
         "init" => {
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;

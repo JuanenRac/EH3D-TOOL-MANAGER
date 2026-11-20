@@ -11,9 +11,11 @@ pub mod files;
 pub mod gui;
 pub mod lang;
 pub mod model;
+pub mod server;
 pub mod settings;
 pub mod shot;
 pub mod store;
+pub mod sync;
 pub mod window;
 
 /// The simulation of a shift on a machine: a seeded list of job reports (the hours, metres and holes that a job used with a tool), played into the crib the way the
