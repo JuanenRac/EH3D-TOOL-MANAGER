@@ -5,14 +5,18 @@
 //! feature it also has the window (`window` holds its state, `gui` draws it).
 
 pub mod calc;
+pub mod check;
 pub mod csv;
 pub mod files;
 #[cfg(feature = "gui")]
 pub mod gui;
 pub mod lang;
 pub mod model;
+#[cfg(feature = "common-machining")]
+pub mod profile;
 pub mod server;
 pub mod settings;
+pub mod sheet;
 pub mod shot;
 pub mod store;
 pub mod sync;

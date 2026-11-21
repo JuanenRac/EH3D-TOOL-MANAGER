@@ -26,6 +26,12 @@ pub const MIN_WINDOW: (u32, u32) = (720, 480);
 pub const MAX_WINDOW: (u32, u32) = (7680, 4320);
 pub const MAX_RPM_LIMITS: (f64, f64) = (1000.0, 400_000.0);
 pub const MAX_FILE_MIB_LIMITS: (u32, u32) = (1, 1024);
+/// The most rows read from a CSV table: the default and the limits of `max_csv_rows`.
+pub const DEFAULT_MAX_CSV_ROWS: u32 = 10_000;
+pub const MAX_CSV_ROWS_LIMITS: (u32, u32) = (1, 100_000);
+/// How far a size asked of a tool or a sheet may be from the one in the crib before `check` says it is another one, in mm: the default and the limits of `check_tolerance_mm`.
+pub const DEFAULT_CHECK_TOLERANCE_MM: f64 = 0.01;
+pub const CHECK_TOLERANCE_LIMITS: (f64, f64) = (0.0001, 1.0);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Settings {
@@ -39,6 +45,10 @@ pub struct Settings {
     pub default_max_rpm: f64,
     /// The largest crib or CSV file that is read, in MiB; a bigger one is refused with the code `file_too_large`.
     pub max_file_mib: u64,
+    /// The most rows read from a CSV table; a table with more is refused.
+    pub max_csv_rows: usize,
+    /// How far a size asked of a tool or a sheet may be from the one in the crib in `check`, in mm.
+    pub check_tolerance_mm: f64,
     /// The link to the EH3D server (`server_address`, `server_token`, `server_machine`, `server_timeout_s`, `server_retries`, `server_mdns`, `server_max_answer_mib`): off until
     /// `server_address` is set.
     pub server: eh3d_serverclient::Settings,
@@ -54,6 +64,8 @@ impl Default for Settings {
             crib_file: None,
             default_max_rpm: DEFAULT_MAX_RPM,
             max_file_mib: DEFAULT_MAX_FILE_MIB,
+            max_csv_rows: DEFAULT_MAX_CSV_ROWS as usize,
+            check_tolerance_mm: DEFAULT_CHECK_TOLERANCE_MM,
             server: eh3d_serverclient::Settings::default(),
             params: CalcParams::default(),
         }
@@ -156,6 +168,12 @@ impl Settings {
                 }
                 "max_file_mib" => {
                     s.max_file_mib = u64::from(whole(line, key, value, MAX_FILE_MIB_LIMITS)?);
+                }
+                "max_csv_rows" => {
+                    s.max_csv_rows = whole(line, key, value, MAX_CSV_ROWS_LIMITS)? as usize;
+                }
+                "check_tolerance_mm" => {
+                    s.check_tolerance_mm = float(line, key, value, CHECK_TOLERANCE_LIMITS)?;
                 }
                 k if crate::server::is_server_key(k) => {
                     s.server
@@ -342,5 +360,26 @@ max_file_mib = 1024"
         let sample = include_str!("../tools.cfg.example");
         assert_eq!(Settings::parse(sample).unwrap(), Settings::default());
         assert!(sample.contains("max_file_mib = 16"));
+        assert!(sample.contains("max_csv_rows = 10000"));
+        assert!(sample.contains("check_tolerance_mm = 0.01"));
+    }
+
+    #[test]
+    fn the_rows_and_the_tolerance_of_the_check_are_read_and_have_their_limits() {
+        let s = Settings::parse("max_csv_rows = 50\ncheck_tolerance_mm = 0.5").unwrap();
+        assert_eq!((s.max_csv_rows, s.check_tolerance_mm), (50, 0.5));
+        for bad in [
+            "max_csv_rows = 0",
+            "max_csv_rows = 100001",
+            "max_csv_rows = many",
+            "check_tolerance_mm = 0",
+            "check_tolerance_mm = 2",
+        ] {
+            let e = Settings::parse(bad).unwrap_err();
+            assert!(
+                e.contains("line 1") && e.contains(bad.split(' ').next().unwrap()),
+                "{e}"
+            );
+        }
     }
 }

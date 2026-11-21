@@ -19,6 +19,12 @@ default_max_rpm = 24000
 # The largest crib or CSV file that is read, in MiB (1 to 1024); a bigger file is refused with the code file_too_large.
 max_file_mib = 16
 
+# The most rows read from a CSV table of tools, sheets or needs (1 to 100000); a table with more is refused.
+max_csv_rows = 10000
+
+# How far a size asked of a tool or a sheet may be from the one in the crib before `check` says it is another one, in mm (0.0001 to 1).
+check_tolerance_mm = 0.01
+
 # Surface speed of a carbide tool in metres a minute (1 to 2000), per material.
 surface_speed_fr4 = 100
 surface_speed_aluminium = 200

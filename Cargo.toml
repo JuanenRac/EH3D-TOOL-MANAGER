@@ -26,10 +26,15 @@ required-features = ["gui"]
 default = []
 # the window (egui, with the icon of the program): `cargo run --release --features gui --bin eh3d-tools-gui`
 gui = ["dep:eframe", "dep:png"]
+# the cutting profile of a tool in a material, read from the machining database of EH3D-COMMON (`eh3d-tools profile`); it needs a release of EH3D-COMMON that has the module `machining`
+common-machining = ["dep:eh3d-materials"]
 
 [dependencies]
 eh3d-serverclient = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/serverclient" }
 serde_json = "1"
+
+# the materials a router cuts, with their starting points (verified = false until somebody tries them on a machine), behind the feature `common-machining`
+eh3d-materials = { version = ">=0.0.1", path = "../EH3D-COMMON/crates/materials", optional = true }
 
 # the window
 eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"], optional = true }

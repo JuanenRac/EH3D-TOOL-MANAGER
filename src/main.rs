@@ -5,8 +5,10 @@
 mod cli_args;
 
 use eh3d_tool_manager::calc::{feeds_speeds_traced_at, v_bit_width_mm, Material};
+use eh3d_tool_manager::check;
 use eh3d_tool_manager::model::{Crib, Kind, Selection, Sort, Tool, Wear};
 use eh3d_tool_manager::settings::{data_dir, Settings};
+use eh3d_tool_manager::sheet::Sheet;
 use eh3d_tool_manager::{csv, files, server, store, sync};
 use std::env;
 use std::path::Path;
@@ -24,7 +26,15 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools wear FILE.json                 the tools that are worn or about to be
   eh3d-tools stats FILE.json                what the tools add up to, by kind
   eh3d-tools export-csv FILE.json
-  eh3d-tools import-csv FILE.json TABLE.csv
+  eh3d-tools import-csv FILE.json TABLE.csv            the tools of the table replace the tools; the sheets of the crib stay
+  eh3d-tools add-sheet FILE.json NAME MATERIAL THICKNESS_MM [--reduction MM] [--kerf MM] [--min-aspect R] [--min-area R]
+                                            a sheet of stencil material: the reduction of each aperture on each side, the kerf of the beam (0 takes it from a laser tool) and the least ratios (0 is no limit)
+  eh3d-tools list-sheets FILE.json
+  eh3d-tools remove-sheet FILE.json ID      take a sheet out (its number is never given again)
+  eh3d-tools export-sheets-csv FILE.json    the sheets as a table (kind is always sheet); the table of the tools does not change
+  eh3d-tools import-sheets-csv FILE.json TABLE.csv   the sheets of the table replace the sheets; the tools stay
+  eh3d-tools check FILE.json [--needs TABLE.csv]   the tools and sheets a job needs are in the crib (the table has the columns name,kind,size_mm) and the crib agrees with itself; ends with the code 2 when it does not
+  eh3d-tools profile FILE.json ID MATERIAL_ID   the cutting profile of a tool in a material of the machining database (only in a build with --features common-machining); profile --materials lists them
   eh3d-tools restore FILE.json               put back FILE.json.bak (kept by the last save); the file it replaces is kept as FILE.json.damaged
   eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG] [--depth MM]
   eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]     the width of the cut of a V-bit at a depth
@@ -34,6 +44,7 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools server [status]                  the link to the EH3D server (server_address, server_token, server_machine, server_timeout_s, server_retries, server_mdns and server_max_answer_mib of tools.cfg) and what the server answers
 
 KIND: drill, end-mill, v-bit, engraver, laser, nozzle. MATERIAL: fr4, aluminium, acrylic, wood, brass.
+Exit codes: 0 done, 1 an error (a value or a file that cannot be used), 2 a check that was not passed.
 vbit works out 2 x depth x tan(angle / 2) + flat (the angle is 10 to 170 degrees, 60 and the flat 0.1 mm by default, both set in tools.cfg); calc --depth uses that width as the diameter a V-bit or an engraver works with.
 The feeds and speeds are starting points to try on a scrap board, not a promise. The numbers they are worked out with can be changed in tools.cfg (see tools.cfg.example).";
 
@@ -118,6 +129,57 @@ fn describe(w: Wear) -> String {
 /// The largest crib or CSV file that is read: `max_file_mib` of `tools.cfg`.
 fn max_mib() -> Result<u64, String> {
     Ok(Settings::load(&data_dir())?.max_file_mib)
+}
+
+/// The most rows read from a CSV table: `max_csv_rows` of `tools.cfg`.
+fn max_rows() -> Result<usize, String> {
+    Ok(Settings::load(&data_dir())?.max_csv_rows)
+}
+
+/// One line of a list of sheets.
+fn sheet_line(s: &Sheet) -> String {
+    format!(
+        "{:>3}  {:<24} {:<12} {:>6.3} mm  reduction {} mm  kerf {} mm  aspect >= {}  area >= {}",
+        s.id,
+        s.name,
+        s.material,
+        s.thickness_mm,
+        s.reduction_mm,
+        s.kerf_mm,
+        s.min_aspect_ratio,
+        s.min_area_ratio
+    )
+}
+
+/// The cutting profile of a tool in a material of the machining database.
+#[cfg(feature = "common-machining")]
+fn profile_command(mut args: Vec<String>) -> Result<(), String> {
+    use eh3d_tool_manager::profile;
+    let db = profile::database()?;
+    if cli_args::switch(&mut args, "--materials") {
+        cli_args::finish(&args, 0)?;
+        for id in profile::material_ids(&db) {
+            println!("{id}");
+        }
+        return Ok(());
+    }
+    if args.len() < 3 {
+        return Err("profile needs a file, a tool number and a material (or --materials)".into());
+    }
+    cli_args::finish(&args, 3)?;
+    let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
+    let id = tool_number(&args[1])?;
+    let tool = crib
+        .get(id)
+        .ok_or_else(|| format!("there is no tool {id}"))?;
+    let p = profile::cut_profile(&db, tool, &args[2])?;
+    print!("{}", profile::describe(tool, &p));
+    Ok(())
+}
+
+#[cfg(not(feature = "common-machining"))]
+fn profile_command(_args: Vec<String>) -> Result<(), String> {
+    Err("profile needs a build with the feature common-machining (cargo build --features common-machining), which reads the machining database of EH3D-COMMON".into())
 }
 
 /// The link to the EH3D server from `tools.cfg`, with an address and a token.
@@ -409,9 +471,13 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 2, "a crib file and a CSV table")?;
             cli_args::finish(&args, 2)?;
             let text = files::read_text_limited(Path::new(&args[1]), files::mib(max_mib()?))?;
-            let crib = csv::from_csv(&text)?;
-            // the table that was there is kept beside the new one: an import replaces it
+            let mut crib = csv::from_csv_limited(&text, max_rows()?)?;
+            // the table that was there is kept beside the new one: an import replaces it; a table of tools has no sheets, so the sheets that were there stay
             let target = Path::new(&args[0]);
+            if let Ok(before) = store::load_with_limit(target, max_mib()?) {
+                crib.sheets = before.sheets;
+                crib.next_sheet_id = before.next_sheet_id;
+            }
             if target.exists() {
                 let mut bak = target.as_os_str().to_owned();
                 bak.push(".bak");
@@ -422,6 +488,109 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             println!("{} tools written to {}", crib.tools.len(), args[0]);
             Ok(())
         }
+        "add-sheet" => {
+            let reduction = flag(&mut args, "--reduction")?;
+            let kerf = flag(&mut args, "--kerf")?;
+            let aspect = flag(&mut args, "--min-aspect")?;
+            let area = flag(&mut args, "--min-area")?;
+            need(&args, 4, "a file, a name, a material and a thickness")?;
+            cli_args::finish(&args, 4)?;
+            let file = Path::new(&args[0]);
+            let mut crib = store::load_with_limit(file, max_mib()?)?;
+            let thickness = args[3]
+                .parse::<f64>()
+                .map_err(|_| format!("the thickness '{}' is not a number", args[3]))?;
+            let mut s = Sheet::new(&args[1], &args[2], thickness);
+            s.reduction_mm = reduction.unwrap_or(0.0);
+            s.kerf_mm = kerf.unwrap_or(0.0);
+            s.min_aspect_ratio = aspect.unwrap_or(0.0);
+            s.min_area_ratio = area.unwrap_or(0.0);
+            let id = crib.add_sheet(s)?;
+            store::save(&crib, file)?;
+            println!("sheet {id} added");
+            Ok(())
+        }
+        "list-sheets" => {
+            need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
+            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
+            for s in &crib.sheets {
+                println!("{}", sheet_line(s));
+            }
+            if crib.sheets.is_empty() {
+                println!("the crib has no sheet");
+            }
+            Ok(())
+        }
+        "remove-sheet" => {
+            need(&args, 2, "a file and a sheet number")?;
+            cli_args::finish(&args, 2)?;
+            let file = Path::new(&args[0]);
+            let mut crib = store::load_with_limit(file, max_mib()?)?;
+            let id = tool_number(&args[1])?;
+            let removed = crib.remove_sheet(id)?;
+            store::save(&crib, file)?;
+            println!(
+                "sheet {} ({}) removed; its number is not given again",
+                removed.id, removed.name
+            );
+            Ok(())
+        }
+        "export-sheets-csv" => {
+            need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
+            print!(
+                "{}",
+                csv::to_sheets_csv(&store::load_with_limit(Path::new(&args[0]), max_mib()?)?)
+            );
+            Ok(())
+        }
+        "import-sheets-csv" => {
+            need(&args, 2, "a crib file and a CSV table of sheets")?;
+            cli_args::finish(&args, 2)?;
+            let text = files::read_text_limited(Path::new(&args[1]), files::mib(max_mib()?))?;
+            let sheets = csv::from_sheets_csv_limited(&text, max_rows()?)?;
+            let target = Path::new(&args[0]);
+            let mut crib = store::load_with_limit(target, max_mib()?)?;
+            crib.next_sheet_id = crib.next_sheet_id.max(sheets.next_sheet_id);
+            crib.sheets = sheets.sheets;
+            store::save(&crib, target)?;
+            println!(
+                "{} sheets written to {} (the previous crib is kept as {}.bak)",
+                crib.sheets.len(),
+                args[0],
+                args[0]
+            );
+            Ok(())
+        }
+        "check" => {
+            let needs_file = cli_args::flag(&mut args, "--needs")?;
+            need(&args, 1, "a file")?;
+            cli_args::finish(&args, 1)?;
+            let settings = Settings::load(&data_dir())?;
+            let crib = store::load_with_limit(Path::new(&args[0]), settings.max_file_mib)?;
+            let needs = match needs_file {
+                Some(f) => {
+                    let text =
+                        files::read_text_limited(Path::new(&f), files::mib(settings.max_file_mib))?;
+                    check::parse_needs(&text, settings.max_csv_rows)
+                        .map_err(|e| format!("{f}: {e}"))?
+                }
+                None => Vec::new(),
+            };
+            let report = check::check(&crib, &needs, settings.check_tolerance_mm);
+            print!("{}", report.text());
+            if report.passed() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "{}: {} problems",
+                    check::VERIFICATION_FAILED,
+                    report.problems.len()
+                ))
+            }
+        }
+        "profile" => profile_command(args),
         "restore" => {
             need(&args, 1, "a crib file")?;
             cli_args::finish(&args, 1)?;
@@ -501,6 +670,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
 fn main() -> ExitCode {
     match run(env::args().skip(1).collect()) {
         Ok(()) => ExitCode::SUCCESS,
+        // a check that was not passed is not a failure of the program: it ends with the code 2
+        Err(e) if e.starts_with(check::VERIFICATION_FAILED) => {
+            eprintln!("verification not passed: {e}");
+            ExitCode::from(2)
+        }
         Err(e) => {
             eprintln!("error: {e}");
             ExitCode::from(1)

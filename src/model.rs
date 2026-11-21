@@ -1,5 +1,7 @@
 //! A tool, the crib that holds it and what the wear counters say.
 
+use crate::sheet::Sheet;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Drill,
@@ -253,6 +255,10 @@ pub struct Crib {
     pub tools: Vec<Tool>,
     /// The number the next tool gets at least: a number that was given is never given again, not even after its tool was removed. 0 until the crib has had a tool.
     pub next_id: u32,
+    /// The sheets of stencil material, with numbers of their own.
+    pub sheets: Vec<Sheet>,
+    /// The number the next sheet gets at least (0 until the crib has had a sheet).
+    pub next_sheet_id: u32,
 }
 
 impl Crib {
@@ -299,6 +305,44 @@ impl Crib {
 
     pub fn get(&self, id: u32) -> Option<&Tool> {
         self.tools.iter().find(|t| t.id == id)
+    }
+
+    /// Adds a sheet and returns the number the crib gives it (above every number of a sheet in use and above the numbers that were given). The same checks as a tool: every
+    /// value must make sense and a name is not used twice among the sheets.
+    pub fn add_sheet(&mut self, mut sheet: Sheet) -> Result<u32, String> {
+        sheet.validate()?;
+        if self
+            .sheets
+            .iter()
+            .any(|s| s.name.eq_ignore_ascii_case(&sheet.name))
+        {
+            return Err(format!("there is a sheet called '{}' already", sheet.name));
+        }
+        let used = self.sheets.iter().map(|s| s.id).max().unwrap_or(0);
+        sheet.id = used
+            .max(self.next_sheet_id.saturating_sub(1))
+            .checked_add(1)
+            .ok_or("too many sheets: there is no number left for a new one")?;
+        let id = sheet.id;
+        self.next_sheet_id = id.saturating_add(1);
+        self.sheets.push(sheet);
+        Ok(id)
+    }
+
+    pub fn get_sheet(&self, id: u32) -> Option<&Sheet> {
+        self.sheets.iter().find(|s| s.id == id)
+    }
+
+    /// Takes a sheet out; its number is not given again.
+    pub fn remove_sheet(&mut self, id: u32) -> Result<Sheet, String> {
+        let at = self
+            .sheets
+            .iter()
+            .position(|s| s.id == id)
+            .ok_or_else(|| format!("there is no sheet {id}"))?;
+        let removed = self.sheets.remove(at);
+        self.next_sheet_id = self.next_sheet_id.max(removed.id.saturating_add(1));
+        Ok(removed)
     }
 
     pub fn remove(&mut self, id: u32) -> Result<Tool, String> {

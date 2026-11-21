@@ -1,8 +1,17 @@
 //! The crib as a CSV table, to open in a spreadsheet: a header row, commas, and double quotes around a text that has a comma, a quote or a line break.
 
 use crate::model::{Crib, Kind, Tool};
+use crate::sheet::{Sheet, KIND_KEY};
 
 pub const HEADER: &str = "id,name,kind,diameter_mm,flutes,length_mm,tip_angle_deg,shank_mm,material,hours,meters,holes,max_hours,max_holes";
+
+/// The header of the table of the sheets of stencil material (`kind` is always `sheet`). The table of the tools keeps its own header, so that a program that reads the
+/// tools reads them as it always did; a program that wants the sheets reads this table, by the names of its columns.
+pub const SHEET_HEADER: &str =
+    "id,name,kind,material,thickness_mm,reduction_mm,kerf_mm,min_aspect_ratio,min_area_ratio";
+
+/// The most rows read from a table when nothing else is said (`max_csv_rows` of `tools.cfg`).
+pub const DEFAULT_MAX_ROWS: usize = 10_000;
 
 /// A text that a spreadsheet would run as a formula when it opens the file starts with one of these.
 const FORMULA_START: [char; 6] = ['=', '+', '-', '@', '\t', '\r'];
@@ -72,6 +81,8 @@ pub fn parse_records(text: &str) -> Result<Vec<Vec<String>>, String> {
     let mut quoted = false;
     // true right after the quote that closes a field: only a comma or the end of the row may follow
     let mut closed = false;
+    // the row of the table the quote that is open began in (the header is row 1)
+    let mut quote_row = 1;
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {
         if quoted {
@@ -89,12 +100,18 @@ pub fn parse_records(text: &str) -> Result<Vec<Vec<String>>, String> {
         } else {
             if closed {
                 if !matches!(c, ',' | '\n' | '\r') {
-                    return Err(format!("there is '{c}' after the closing quote of a field"));
+                    return Err(format!(
+                        "row {}: there is '{c}' after the closing quote of a field",
+                        records.len() + 1
+                    ));
                 }
                 closed = false;
             }
             match c {
-                '"' if field.is_empty() => quoted = true,
+                '"' if field.is_empty() => {
+                    quoted = true;
+                    quote_row = records.len() + 1;
+                }
                 ',' => record.push(std::mem::take(&mut field)),
                 '\r' => {}
                 '\n' => {
@@ -106,7 +123,9 @@ pub fn parse_records(text: &str) -> Result<Vec<Vec<String>>, String> {
         }
     }
     if quoted {
-        return Err("a quote is opened and never closed".into());
+        return Err(format!(
+            "row {quote_row}: a quote is opened and never closed"
+        ));
     }
     if !field.is_empty() || !record.is_empty() {
         record.push(field);
@@ -116,11 +135,38 @@ pub fn parse_records(text: &str) -> Result<Vec<Vec<String>>, String> {
     Ok(records)
 }
 
-/// Reads a crib from CSV; every row is checked like a tool of the JSON document and the message names the row.
+/// Reads a crib from CSV; every row is checked like a tool of the JSON document and the message names the row. At most `DEFAULT_MAX_ROWS` rows are read.
 pub fn from_csv(text: &str) -> Result<Crib, String> {
-    let records = parse_records(text.trim_start_matches('\u{feff}'))?;
-    let (head, rows) = records.split_first().ok_or("the CSV is empty")?;
+    from_csv_limited(text, DEFAULT_MAX_ROWS)
+}
+
+/// The rows and the header of a table, refused when it has more rows than `max_rows`.
+pub(crate) fn table(
+    text: &str,
+    max_rows: usize,
+) -> Result<(Vec<String>, Vec<Vec<String>>), String> {
+    let mut records = parse_records(text.trim_start_matches('\u{feff}'))?;
+    if records.is_empty() {
+        return Err("the CSV is empty".into());
+    }
+    let head = records.remove(0);
+    if records.len() > max_rows {
+        return Err(format!(
+            "the table has {} rows: more than the {max_rows} allowed (max_csv_rows in tools.cfg)",
+            records.len()
+        ));
+    }
+    Ok((head, records))
+}
+
+/// Like `from_csv`, with the most rows given (`max_csv_rows` of `tools.cfg`).
+pub fn from_csv_limited(text: &str, max_rows: usize) -> Result<Crib, String> {
+    let (head, rows) = table(text, max_rows)?;
+    let rows = &rows[..];
     if head.join(",") != HEADER {
+        if head.join(",") == SHEET_HEADER {
+            return Err("this is a table of sheets, not of tools: read it with the sheets commands (import-sheets-csv)".into());
+        }
         return Err(format!("the first row must be exactly: {HEADER}"));
     }
     let mut crib = Crib::default();
@@ -183,6 +229,96 @@ pub fn from_csv(text: &str) -> Result<Crib, String> {
     }
     if let Some(used) = crib.tools.iter().map(|t| t.id).max() {
         crib.next_id = used.saturating_add(1);
+    }
+    Ok(crib)
+}
+
+/// The sheets of the crib as a table (`SHEET_HEADER`); a crib with no sheet gives the header only.
+pub fn to_sheets_csv(crib: &Crib) -> String {
+    let mut out = String::from(SHEET_HEADER);
+    out.push('\n');
+    for s in &crib.sheets {
+        out.push_str(&format!(
+            "{},{},{},{},{},{},{},{},{}\n",
+            s.id,
+            quote(&s.name),
+            KIND_KEY,
+            quote(&s.material),
+            s.thickness_mm,
+            s.reduction_mm,
+            s.kerf_mm,
+            s.min_aspect_ratio,
+            s.min_area_ratio
+        ));
+    }
+    out
+}
+
+/// Reads a table of sheets into a crib that has only those sheets; every row is checked like a sheet of the JSON document and the message names the row.
+pub fn from_sheets_csv(text: &str) -> Result<Crib, String> {
+    from_sheets_csv_limited(text, DEFAULT_MAX_ROWS)
+}
+
+/// Like `from_sheets_csv`, with the most rows given (`max_csv_rows` of `tools.cfg`).
+pub fn from_sheets_csv_limited(text: &str, max_rows: usize) -> Result<Crib, String> {
+    let (head, rows) = table(text, max_rows)?;
+    if head.join(",") != SHEET_HEADER {
+        if head.join(",") == HEADER {
+            return Err("this is a table of tools, not of sheets: read it with import-csv".into());
+        }
+        return Err(format!("the first row must be exactly: {SHEET_HEADER}"));
+    }
+    let mut crib = Crib::default();
+    for (i, row) in rows.iter().enumerate() {
+        let n = i + 2;
+        if row.len() != 9 {
+            return Err(format!("row {n}: it has {} fields, not 9", row.len()));
+        }
+        let num = |k: usize, name: &str| -> Result<f64, String> {
+            if row[k].trim().is_empty() {
+                return Ok(0.0);
+            }
+            row[k]
+                .trim()
+                .parse::<f64>()
+                .ok()
+                .filter(|v| v.is_finite())
+                .ok_or_else(|| format!("row {n}: {name} '{}' is not a number", row[k]))
+        };
+        if !row[2].trim().eq_ignore_ascii_case(KIND_KEY) {
+            return Err(format!(
+                "row {n}: the kind '{}' is not '{KIND_KEY}'",
+                row[2]
+            ));
+        }
+        let mut s = Sheet::new(
+            &unformula(&row[1]),
+            &unformula(&row[3]),
+            num(4, "thickness_mm")?,
+        );
+        s.id = row[0]
+            .trim()
+            .parse::<u32>()
+            .map_err(|_| format!("row {n}: the id '{}' is not a whole number", row[0]))?;
+        s.reduction_mm = num(5, "reduction_mm")?;
+        s.kerf_mm = num(6, "kerf_mm")?;
+        s.min_aspect_ratio = num(7, "min_aspect_ratio")?;
+        s.min_area_ratio = num(8, "min_area_ratio")?;
+        s.validate().map_err(|e| format!("row {n}: {e}"))?;
+        if s.id == 0 || crib.sheets.iter().any(|o| o.id == s.id) {
+            return Err(format!("row {n}: the id {} is missing or used twice", s.id));
+        }
+        if crib
+            .sheets
+            .iter()
+            .any(|o| o.name.eq_ignore_ascii_case(&s.name))
+        {
+            return Err(format!("row {n}: the name '{}' is used twice", s.name));
+        }
+        crib.sheets.push(s);
+    }
+    if let Some(used) = crib.sheets.iter().map(|s| s.id).max() {
+        crib.next_sheet_id = used.saturating_add(1);
     }
     Ok(crib)
 }

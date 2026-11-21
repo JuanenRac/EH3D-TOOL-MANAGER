@@ -2,7 +2,9 @@
 
 use eh3d_tool_manager::csv::{from_csv, parse_records, to_csv, HEADER};
 use eh3d_tool_manager::model::{Crib, Kind, Tool, Wear, KINDS, MAX_DIAMETER_MM, MAX_NAME};
-use eh3d_tool_manager::store::{from_json, to_json, MAX_TOOLS, SCHEMA_VERSION};
+use eh3d_tool_manager::store::{
+    from_json, to_json, MAX_TOOLS, SCHEMA_VERSION, SHEETS_SCHEMA_VERSION,
+};
 
 fn drill(name: &str) -> Tool {
     Tool::new(name, Kind::Drill, 0.8)
@@ -216,7 +218,7 @@ fn a_json_that_is_damaged_names_what_is_wrong() {
     assert!(from_json("{\"tools\": 3}").unwrap_err().contains("no list"));
     let newer = format!(
         "{{\"schema_version\": {}, \"tools\": []}}",
-        SCHEMA_VERSION + 1
+        SHEETS_SCHEMA_VERSION + 1
     );
     assert!(from_json(&newer).unwrap_err().contains("format"));
     assert_eq!(from_json("{\"tools\": []}").unwrap(), Crib::default());

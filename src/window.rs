@@ -781,9 +781,12 @@ impl Window {
                 return;
             }
         };
-        match csv::from_csv(&text) {
+        match csv::from_csv_limited(&text, self.settings.max_csv_rows) {
             Ok(mut crib) => {
                 crib.next_id = crib.next_id.max(self.crib.next_id);
+                // a table of tools has no sheets: the sheets of the crib stay as they are
+                crib.sheets = std::mem::take(&mut self.crib.sheets);
+                crib.next_sheet_id = self.crib.next_sheet_id;
                 self.crib = crib;
                 self.forget_choice();
                 self.dirty = true;
