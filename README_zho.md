@@ -18,7 +18,7 @@
 
 ---
 
-**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-tools`），有 207 个在电脑上运行的测试：管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速。窗口（`eh3d-tools-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
+**诚实检查 - 当前真正能运行的内容：** 一个 Rust 库和一个命令行程序（`eh3d-tools`），有 224 个在电脑上运行的测试：管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速。窗口（`eh3d-tools-gui`，用 `gui` 特性构建）已编写，其逻辑已测试，但尚未构建，也没有在屏幕上看过；没有在机器上试过任何东西，也没有用大量真实文件验证过。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | 版本 | `0.1.1` |
 | 成熟度 | 脚手架 |
-| 测试 | 207 |
+| 测试 | 224 |
 | 技术栈 | Rust |
 | 真实硬件 | 未试过：这里的任何内容都没有在机器上运行过 |
 
@@ -47,7 +47,7 @@
 |---|---|---|
 | 核心 | 🟡 | 管理刀具的几何尺寸和磨损，以 JSON 或 CSV 存储，并按材料计算起始进给和转速；已在电脑上用正常和损坏的输入测试，未用大量真实文件验证。 |
 | 命令行 | 🟡 | `eh3d-tools` 运行与库相同的函数并打印结果；每个错误都以消息和非零退出码返回。 |
-| 测试 | 🟡 | 207 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入，以及模拟的作业班次（非数字的报告、已不存在的刀具、失败的保存、中途被截断的刀库文件）及其恢复。 |
+| 测试 | 🟡 | 224 个测试通过（`cargo test`），包含正常情况、边界情况和损坏的输入，以及模拟的作业班次（非数字的报告、已不存在的刀具、失败的保存、中途被截断的刀库文件）及其恢复。 |
 | 安全 | 🟡 | 纯安全 Rust（`forbid(unsafe_code)`）：处理收到的文件时不会 panic，错误的值会返回带原因的错误；没有独立审查。 |
 | 窗口 | 🟠 | 已编写（egui，`--features gui`，程序 `eh3d-tools-gui`）：一个可用与命令行相同的检查添加、修改和移除刀具的表格、筛选和搜索、带库错误信息的 CSV 导入导出，以及显示公式和条件的进给与转速计算器；其逻辑已测试，但尚未构建，也没有在屏幕上看过。 |
 | 真实硬件 | 🔴 | 未试过：这里的任何内容都没有在机器上运行过。 |
@@ -98,6 +98,7 @@ EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。它以库、命�
 * **V 形刀的切削宽度：** `eh3d-tools vbit --depth MM [--angle 度] [--flat MM]` 计算 `2 x 深度 x tan(角度 / 2) + 平头宽度`（60 度的刀在 0.5 mm 深度下得到 0.5774 mm，再加上 0.1 mm 的平头 = 0.6774 mm）；角度为 10 到 170 度，深度为 0 到 100 mm，平头为 0 到 5 mm，未给出的值取自 `tools.cfg`。`calc --depth MM` 把这个宽度作为 V 形刀或雕刻刀在进给与转速计算中使用的直径，窗口的计算器有深度输入栏，显示切削宽度以及带数值的公式；没有深度时数值与以往相同。
 * **恢复上一份备份：** `eh3d-tools restore FILE.json` 在确认备份可读之后，用 `FILE.json.bak`（上一次保存留下的备份）替换该文件，被替换的文件保留为 `FILE.json.damaged`，并警告在该备份之后保存的内容不在其中；窗口里有同样功能的“恢复备份”按钮。绝不会自动恢复。
 * **列表、单个刀具的完整信息、更换、移除和汇总：** `eh3d-tools list FILE.json [--kind 类型] [--worn] [--sort id|name|wear]` 只显示某一类型或只显示已磨损的刀具，可按编号、按名称或按磨损程度从高到低排序（没有匹配时显示 `no tool matches`）；`show FILE.json ID` 打印刀具的全部数值以及距各上限还剩多少；`replace FILE.json ID` 用新刀具替换已磨损的刀具（计数器归零，其余保持不变，之前的文件保存为 `.bak`）；`remove FILE.json ID` 取出一把刀具（其编号不会再次分配）；`stats FILE.json` 按类型汇总刀具数、小时、米数、孔数和需更换的刀具数。每一项都是库中的函数（`Crib::select`、`Tool::remaining`、`Crib::replace_tool`、`Crib::summary`）。
+* **模板薄板、刀库检查和切削档案：** `add-sheet FILE.json NAME MATERIAL THICKNESS_MM [--reduction MM] [--kerf MM] [--min-aspect R] [--min-area R]` 在刀具旁保存一块薄板（材料、厚度、每个开孔每侧缩小多少、光束的切缝，以及开孔的最小长宽比和最小面积比，0 表示不限）；`list-sheets`、`remove-sheet`、`export-sheets-csv` 和 `import-sheets-csv` 用于管理。刀具表保持原有的列且不含薄板，因此读取它的程序照旧读取；薄板有自己的表，其 `kind` 始终是 `sheet`，含薄板的刀库以格式 2 写出，只认识格式 1 的程序会拒绝它，而不是丢掉薄板。`check FILE.json [--needs TABLE.csv]` 检查作业所需的每把刀具（按名称和直径）和每块薄板（按名称和厚度）（以列为 `name,kind,size_mm` 的表写出）是否在刀库中，以及刀库自身是否一致；未通过时以退出码 2 结束（1 仍表示错误）。`tools.cfg` 的 `max_csv_rows` 和 `check_tolerance_mm` 限定表格和尺寸，错误的行以行号指出。`profile FILE.json ID MATERIAL_ID` 在使用 `--features common-machining` 构建时，从 EH3D-COMMON 的加工数据库读取某材料中刀具的起点，并首先说明这些数值未在机器上试过。
 
 ## 🔒 安全与防护
 
@@ -117,6 +118,7 @@ EH3D-TOOL-MANAGER 是 EH3D Fabrication Suite 的一个程序。它以库、命�
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  逻辑的一部分
+│   ├── check.rs                                 检查：作业所需的刀具和薄板是否在刀库中
 │   ├── cli_args.rs                              命令行参数（严格解析）
 │   ├── csv.rs                                   逻辑的一部分
 │   ├── files.rs                                 带大小上限的读取和经临时文件的写入
@@ -126,7 +128,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── model.rs                                 逻辑的一部分
+│   ├── profile.rs                               刀具在某材料中的切削档案（common-machining 特性）
 │   ├── settings.rs                              tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值
+│   ├── sheet.rs                                 模板薄板：厚度、缩小量、切缝和比值
 │   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   ├── store.rs                                 逻辑的一部分
 │   └── window.rs                                无需屏幕的窗口状态：刀具库、表单、筛选和计算器
@@ -134,11 +138,20 @@ EH3D-TOOL-MANAGER/
 │   ├── crib.rs                                  库和命令行的测试
 │   ├── files.rs                                 文件大小上限和原子写入的测试
 │   ├── shot_sample.rs                           示例刀具库和截图窗口的测试
-│   └── vbit.rs                                  V 形刀切削宽度的测试：命令、calc 中的深度和设置
+│   ├── vbit.rs                                  V 形刀切削宽度的测试：命令、calc 中的深度和设置
+│   ├── check.rs                                 检查、其退出码和薄板命令的测试
+│   ├── fuzz.rs                                  对表格和刀库读取器的固定种子模糊测试
+│   ├── profile.rs                               切削档案的测试（common-machining 特性）
+│   ├── sheets.rs                                薄板的测试：模型、JSON、表格和读取上限
+│   └── reqs.rs                                  需求登记表的测试
 ├── examples/
 │   └── crib.json                                试用的示例
 ├── docs/
 │   ├── architecture.json                        架构图数据
+│   ├── NOT_YET.md                               本版本暂不包含的好想法及其原因和时机
+│   ├── REQUIREMENTS.md                          需求登记表：每项的状态、证据和测试
+│   ├── SCOPE.md                                 用途、不做什么以及永远不由它决定的事
+│   ├── STATUS.md                                已有的、缺少的和仍未决定的
 │   └── structure.json                           结构图数据
 ├── tools/                                       CI 和 README 检查及绘图工具
 ├── images/                                      横幅图以及架构和仓库结构图片
@@ -147,6 +160,7 @@ EH3D-TOOL-MANAGER/
 ├── Cargo.toml Cargo.lock                        工作区及其锁定的依赖
 ├── rust-toolchain.toml                          固定的 Rust 工具链
 ├── CHANGELOG.md                                 每个版本的变更
+├── AGENTS.md                                    修改本仓库的人需要遵守的规则
 ├── SECURITY.md SUPPORT.md                       如何报告漏洞及在哪里提问
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   参与贡献、行为准则和许可证
 └── tools.cfg.example                            tools.cfg 的所有设置及其默认值
@@ -176,7 +190,7 @@ cargo run --release --features gui --bin eh3d-tools-gui -- --shot screen.png --o
 
 ## 🧪 测试
 
-测试套件有 207 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
+测试套件有 224 个测试（`cargo test`，CI 在 Windows 和 Linux 上运行）。它们检查正常情况、边界情况和损坏的输入：空文件、乱码和被截断的文件绝不会 panic。CI 还运行 `cargo fmt --check`、把警告当作错误的 `cargo clippy` （也包括 `--features gui`） 以及 `python -I tools/ci_validate.py`。
 
 ## 🏗️ 构建与发布
 
@@ -199,6 +213,7 @@ cargo run --release --features gui --bin eh3d-tools-gui -- --shot screen.png --o
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  逻辑的一部分
+│   ├── check.rs                                 检查：作业所需的刀具和薄板是否在刀库中
 │   ├── cli_args.rs                              命令行参数（严格解析）
 │   ├── csv.rs                                   逻辑的一部分
 │   ├── files.rs                                 带大小上限的读取和经临时文件的写入
@@ -208,7 +223,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   库：每个命令所使用的部分
 │   ├── main.rs                                  命令行
 │   ├── model.rs                                 逻辑的一部分
+│   ├── profile.rs                               刀具在某材料中的切削档案（common-machining 特性）
 │   ├── settings.rs                              tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值
+│   ├── sheet.rs                                 模板薄板：厚度、缩小量、切缝和比值
 │   ├── shot.rs                                  窗口的截图模式（--shot）：无需屏幕即可读取和检查其参数
 │   ├── store.rs                                 逻辑的一部分
 │   └── window.rs                                无需屏幕的窗口状态：刀具库、表单、筛选和计算器
@@ -217,6 +234,10 @@ EH3D-TOOL-MANAGER/
 │   ├── files.rs                                 文件大小上限和原子写入的测试
 │   ├── shot_sample.rs                           示例刀具库和截图窗口的测试
 │   ├── vbit.rs                                  V 形刀切削宽度的测试：命令、calc 中的深度和设置
+│   ├── check.rs                                 检查、其退出码和薄板命令的测试
+│   ├── fuzz.rs                                  对表格和刀库读取器的固定种子模糊测试
+│   ├── profile.rs                               切削档案的测试（common-machining 特性）
+│   ├── sheets.rs                                薄板的测试：模型、JSON、表格和读取上限
 │   └── reqs.rs                                  需求登记表的测试
 ├── examples/
 │   └── crib.json                                试用的示例

@@ -8,6 +8,9 @@ The tool crib shared by the CAM programs of the suite: drills, end mills, V-bits
 
 ## What it does
 
+* Keeps, beside the tools, the sheets of stencil material (material, thickness, the reduction of each aperture, the kerf of the beam and the least aspect ratio and area ratio of an aperture) in the JSON document and in a table of their own; the table of the tools does not change.
+* Checks that the tools (by name and diameter) and the sheets (by name and thickness) that a job needs are in the crib and that the crib agrees with itself, and ends with the code 2 when it does not.
+* Reads the cutting profile of a tool in a material from the machining database of `EH3D-COMMON`, only in a build with the feature `common-machining`, and says first that its figures were not tried on a machine.
 * Keeps the crib as a JSON document or a CSV table for a spreadsheet, checks every value, refuses a repeated name and a field that makes no sense with its name, and names the row in every error of a CSV.
 * Numbers each tool and never gives the number of a removed tool again; writes a CSV so that a spreadsheet does not run a text that starts like a formula.
 * Adds the use of a tool (hours, metres, holes) after a job, says whether it is good, to replace soon (from 90 %) or to replace, and lists the worst first.
@@ -18,7 +21,7 @@ The tool crib shared by the CAM programs of the suite: drills, end mills, V-bits
 ## What it will not do
 
 * No decision about the limits of a machine, its spindle or its emergency stop (see below).
-* No reading of the crib by the other CAM programs: only the CSV table is read by ISOCAM today (see `NOT_YET.md`).
+* No reading of the crib by the other CAM programs: only the CSV table of the tools is read by ISOCAM today, and none reads the table of sheets yet (see `NOT_YET.md`).
 * No database: the crib is a JSON file.
 * No measuring of a real tool: the values are what a person types.
 * No claim that the feeds and speeds are right for a machine: they are starting points taken from typical values.

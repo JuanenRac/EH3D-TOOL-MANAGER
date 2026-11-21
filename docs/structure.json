@@ -41,6 +41,19 @@
           }
         },
         {
+          "name": "check.rs",
+          "desc": {
+            "en": "the check: the tools and sheets a job needs are in the crib",
+            "es": "la comprobación: las herramientas y láminas de un trabajo están en el almacén",
+            "de": "die Prüfung: Werkzeuge und Bleche eines Auftrags sind im Magazin",
+            "fr": "le contrôle : les outils et feuilles d'un travail sont dans le magasin",
+            "it": "il controllo: utensili e fogli di un lavoro sono nel magazzino",
+            "ja": "チェック：ジョブに必要な工具とシートが保管庫にあるか",
+            "zh": "检查：作业所需的刀具和薄板是否在刀库中",
+            "pt": "a verificação: as ferramentas e as folhas de um trabalho estão no armazém"
+          }
+        },
+        {
           "name": "cli_args.rs",
           "desc": {
             "en": "the arguments of the command line, read strictly",
@@ -158,6 +171,19 @@
           }
         },
         {
+          "name": "profile.rs",
+          "desc": {
+            "en": "the cutting profile of a tool in a material (feature common-machining)",
+            "es": "el perfil de corte de una herramienta en un material (feature common-machining)",
+            "de": "das Schnittprofil eines Werkzeugs in einem Material (Feature common-machining)",
+            "fr": "le profil de coupe d'un outil dans un matériau (feature common-machining)",
+            "it": "il profilo di taglio di un utensile in un materiale (feature common-machining)",
+            "ja": "材料ごとの工具の切削プロファイル（common-machining 機能）",
+            "zh": "刀具在某材料中的切削档案（common-machining 特性）",
+            "pt": "o perfil de corte de uma ferramenta num material (feature common-machining)"
+          }
+        },
+        {
           "name": "settings.rs",
           "desc": {
             "en": "the settings of tools.cfg: language, window size, crib file and the numbers of the calculation",
@@ -168,6 +194,19 @@
             "ja": "tools.cfg の設定：言語、ウィンドウサイズ、工具庫ファイル、計算に使う数値",
             "zh": "tools.cfg 的设置：语言、窗口大小、刀具库文件和计算所用的数值",
             "pt": "as definições de tools.cfg: idioma, tamanho da janela, ficheiro do armazém e os números do cálculo"
+          }
+        },
+        {
+          "name": "sheet.rs",
+          "desc": {
+            "en": "a sheet of stencil material: thickness, reduction, kerf and ratios",
+            "es": "una lámina de plantilla: espesor, reducción, kerf y relaciones",
+            "de": "ein Schablonenblech: Dicke, Verkleinerung, Schnittfuge und Verhältnisse",
+            "fr": "une feuille de pochoir : épaisseur, réduction, trait de coupe et rapports",
+            "it": "un foglio per stencil: spessore, riduzione, kerf e rapporti",
+            "ja": "ステンシル用シート：厚さ、縮小、カーフ、比率",
+            "zh": "模板薄板：厚度、缩小量、切缝和比值",
+            "pt": "uma folha de máscara: espessura, redução, kerf e rácios"
           }
         },
         {
@@ -266,6 +305,58 @@
             "ja": "Vビットの切削幅のテスト：コマンド、calc の深さ、設定",
             "zh": "V 形刀切削宽度的测试：命令、calc 中的深度和设置",
             "pt": "testes da largura do corte de uma fresa em V: o comando, a profundidade em calc e as definições"
+          }
+        },
+        {
+          "name": "check.rs",
+          "desc": {
+            "en": "tests of the check, its exit codes and the sheet commands",
+            "es": "pruebas de la comprobación, sus códigos de salida y las órdenes de láminas",
+            "de": "Tests der Prüfung, ihrer Exit-Codes und der Blech-Befehle",
+            "fr": "tests du contrôle, de ses codes de sortie et des commandes de feuilles",
+            "it": "test del controllo, dei suoi codici di uscita e dei comandi dei fogli",
+            "ja": "チェック、その終了コード、シートコマンドのテスト",
+            "zh": "检查、其退出码和薄板命令的测试",
+            "pt": "testes da verificação, dos seus códigos de saída e dos comandos de folhas"
+          }
+        },
+        {
+          "name": "fuzz.rs",
+          "desc": {
+            "en": "a fuzz with a fixed seed of the table and crib readers",
+            "es": "un fuzz con semilla fija de los lectores de tablas y almacén",
+            "de": "ein Fuzz mit festem Seed der Tabellen- und Magazinleser",
+            "fr": "un fuzz à graine fixe des lecteurs de tables et de magasin",
+            "it": "un fuzz con seme fisso dei lettori di tabelle e magazzino",
+            "ja": "表と保管庫の読み取りの固定シードによるファズ",
+            "zh": "对表格和刀库读取器的固定种子模糊测试",
+            "pt": "um fuzz com semente fixa dos leitores de tabelas e armazém"
+          }
+        },
+        {
+          "name": "profile.rs",
+          "desc": {
+            "en": "tests of the cutting profile (feature common-machining)",
+            "es": "pruebas del perfil de corte (feature common-machining)",
+            "de": "Tests des Schnittprofils (Feature common-machining)",
+            "fr": "tests du profil de coupe (feature common-machining)",
+            "it": "test del profilo di taglio (feature common-machining)",
+            "ja": "切削プロファイルのテスト（common-machining 機能）",
+            "zh": "切削档案的测试（common-machining 特性）",
+            "pt": "testes do perfil de corte (feature common-machining)"
+          }
+        },
+        {
+          "name": "sheets.rs",
+          "desc": {
+            "en": "tests of the sheets: model, JSON, table and read limits",
+            "es": "pruebas de las láminas: modelo, JSON, tabla y límites de lectura",
+            "de": "Tests der Bleche: Modell, JSON, Tabelle und Lesegrenzen",
+            "fr": "tests des feuilles : modèle, JSON, table et limites de lecture",
+            "it": "test dei fogli: modello, JSON, tabella e limiti di lettura",
+            "ja": "シートのテスト：モデル、JSON、表、読み取り上限",
+            "zh": "薄板的测试：模型、JSON、表格和读取上限",
+            "pt": "testes das folhas: modelo, JSON, tabela e limites de leitura"
           }
         },
         {

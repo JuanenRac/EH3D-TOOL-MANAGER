@@ -18,7 +18,7 @@
 
 ---
 
-**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 207 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
+**Verifica di onestà - cosa funziona oggi:** una libreria Rust e un programma a riga di comando (`eh3d-tools`) con 224 test eseguiti su un computer: conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale. Una finestra (`eh3d-tools-gui`, compilata con la funzione `gui`) è scritta e la sua logica è testata, ma non è stata compilata né guardata su uno schermo; nulla è stato provato su una macchina e nulla è stato verificato su una raccolta di file reali.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versione | `0.1.1` |
 | Maturità | Impalcatura |
-| Test | 207 |
+| Test | 224 |
 | Stack tecnologico | Rust |
 | Su hardware reale | Non provato: nulla di questo ha girato su una macchina |
 
@@ -47,7 +47,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 |---|---|---|
 | Nucleo | 🟡 | conserva gli utensili con geometria e usura, li memorizza in JSON o CSV e calcola avanzamenti e velocità di partenza per materiale; provato su un computer con input normali e danneggiati, non con una raccolta di file reali. |
 | Riga di comando | 🟡 | `eh3d-tools` esegue le stesse funzioni della libreria e stampa il risultato; ogni errore torna come messaggio e codice di uscita diverso da zero. |
-| Test | 🟡 | 207 test passano (`cargo test`), con casi normali, casi limite e input danneggiati, e un turno simulato di lavori (rapporti che non sono numeri, utensili spariti, salvataggi che falliscono, un file del magazzino tagliato a metà) con il suo ripristino. |
+| Test | 🟡 | 224 test passano (`cargo test`), con casi normali, casi limite e input danneggiati, e un turno simulato di lavori (rapporti che non sono numeri, utensili spariti, salvataggi che falliscono, un file del magazzino tagliato a metà) con il suo ripristino. |
 | Sicurezza | 🟡 | Rust sicuro e semplice (`forbid(unsafe_code)`): nulla va in panico con i file ricevuti e un valore errato è un errore con il suo motivo; nessuna revisione indipendente. |
 | Finestra | 🟠 | Scritta (egui, `--features gui`, programma `eh3d-tools-gui`): una tabella degli utensili che si aggiungono, modificano e rimuovono con i controlli della riga di comando, filtri e ricerca, importazione ed esportazione CSV con gli errori della libreria e un calcolatore di avanzamenti e velocità che mostra formule e condizioni; la sua logica è testata, ma non è ancora stata compilata né guardata su uno schermo. |
 | Hardware reale | 🔴 | Non provato: nulla di questo è stato eseguito su una macchina. |
@@ -98,6 +98,7 @@ Come si incastrano le parti di questo repository: chi lo usa, cosa contiene e da
 * **La larghezza del taglio di una fresa a V:** `eh3d-tools vbit --depth MM [--angle GRADI] [--flat MM]` calcola `2 x profondità x tan(angolo / 2) + punta piatta` (una fresa da 60 gradi a 0,5 mm dà 0,5774 mm più la punta piatta di 0,1 mm = 0,6774 mm); l'angolo va da 10 a 170 gradi, la profondità da 0 a 100 mm e la punta piatta da 0 a 5 mm, e ciò che non viene indicato è il valore di `tools.cfg`. `calc --depth MM` usa questa larghezza come diametro con cui lavora una fresa a V o un incisore negli avanzamenti e velocità, e il calcolatore della finestra ha un campo per la profondità, mostra la larghezza del taglio e la formula con i suoi numeri; senza profondità i numeri sono quelli di sempre.
 * **Rimettere la scheda precedente:** `eh3d-tools restore FILE.json` sostituisce il file con `FILE.json.bak` (la scheda conservata dall'ultimo salvataggio) dopo aver verificato che la copia si legga, conserva il file sostituito come `FILE.json.damaged` e avverte che quanto salvato dopo quella copia non vi è contenuto; la finestra ha un pulsante "Ripristina copia" per lo stesso scopo. Niente viene mai ripristinato da solo.
 * **Elencare, un utensile per intero, sostituire, togliere e le somme:** `eh3d-tools list FILE.json [--kind TIPO] [--worn] [--sort id|name|wear]` mostra solo un tipo o solo gli utensili usurati, per numero, per nome o i più usurati per primi (e dice `no tool matches` quando nessuno corrisponde); `show FILE.json ID` stampa tutti i valori di un utensile e quanto resta prima di ogni limite; `replace FILE.json ID` mette un utensile nuovo al posto di uno usurato (i contatori tornano a zero, il resto resta e l'archivio precedente è conservato come `.bak`); `remove FILE.json ID` toglie un utensile (il suo numero non viene riassegnato); `stats FILE.json` somma per tipo utensili, ore, metri, fori e utensili da sostituire. Ognuno è una funzione della libreria (`Crib::select`, `Tool::remaining`, `Crib::replace_tool`, `Crib::summary`).
+* **Fogli per stencil, un controllo del magazzino e un profilo di taglio:** `add-sheet FILE.json NAME MATERIAL THICKNESS_MM [--reduction MM] [--kerf MM] [--min-aspect R] [--min-area R]` conserva un foglio accanto agli utensili (il suo materiale, il suo spessore, di quanto si riduce ogni apertura su ogni lato, il kerf del fascio e il rapporto d'aspetto e il rapporto d'area minimi di un'apertura, 0 per nessun limite); `list-sheets`, `remove-sheet`, `export-sheets-csv` e `import-sheets-csv` li gestiscono. La tabella degli utensili mantiene le sue colonne e non contiene fogli, quindi un programma che la legge la legge come prima; i fogli hanno una tabella propria il cui `kind` è sempre `sheet`, e un magazzino con fogli viene scritto in formato 2, che un programma che conosce solo il formato 1 rifiuta invece di perdere i fogli. `check FILE.json [--needs TABLE.csv]` verifica che ogni utensile (per nome e diametro) e ogni foglio (per nome e spessore) di cui un lavoro ha bisogno, scritto come tabella con le colonne `name,kind,size_mm`, sia nel magazzino e che il magazzino sia coerente con sé stesso, e termina con il codice di uscita 2 se non è superato (l'1 resta per un errore). `max_csv_rows` e `check_tolerance_mm` di `tools.cfg` limitano le tabelle e le dimensioni, e una riga sbagliata è indicata dal suo numero. `profile FILE.json ID MATERIAL_ID`, in una build con `--features common-machining`, legge il punto di partenza di un utensile in un materiale dal database di lavorazione di EH3D-COMMON e dice per prima cosa che i valori non sono stati provati su una macchina.
 
 ## 🔒 Sicurezza e protezione
 
@@ -117,6 +118,7 @@ La libreria è `eh3d_tool_manager` (`use eh3d_tool_manager::...`); la riga di co
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  una parte della logica
+│   ├── check.rs                                 il controllo: utensili e fogli di un lavoro sono nel magazzino
 │   ├── cli_args.rs                              gli argomenti della riga di comando, letti con rigore
 │   ├── csv.rs                                   una parte della logica
 │   ├── files.rs                                 file letti con limite di dimensione, scritti tramite temporaneo
@@ -126,7 +128,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
 │   ├── model.rs                                 una parte della logica
+│   ├── profile.rs                               il profilo di taglio di un utensile in un materiale (feature common-machining)
 │   ├── settings.rs                              le impostazioni di tools.cfg: lingua, dimensione della finestra, file del magazzino e numeri del calcolo
+│   ├── sheet.rs                                 un foglio per stencil: spessore, riduzione, kerf e rapporti
 │   ├── shot.rs                                  la modalità immagine della finestra (--shot): i suoi argomenti, letti e verificati senza schermo
 │   ├── store.rs                                 una parte della logica
 │   └── window.rs                                lo stato della finestra senza schermo: il magazzino, il modulo, i filtri e il calcolatore
@@ -134,11 +138,20 @@ EH3D-TOOL-MANAGER/
 │   ├── crib.rs                                  test della libreria e della riga di comando
 │   ├── files.rs                                 test del limite di dimensione e della scrittura atomica dei file
 │   ├── shot_sample.rs                           test della cassetta di esempio e della finestra di un'immagine
-│   └── vbit.rs                                  test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni
+│   ├── vbit.rs                                  test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni
+│   ├── check.rs                                 test del controllo, dei suoi codici di uscita e dei comandi dei fogli
+│   ├── fuzz.rs                                  un fuzz con seme fisso dei lettori di tabelle e magazzino
+│   ├── profile.rs                               test del profilo di taglio (feature common-machining)
+│   ├── sheets.rs                                test dei fogli: modello, JSON, tabella e limiti di lettura
+│   └── reqs.rs                                  test del registro dei requisiti
 ├── examples/
 │   └── crib.json                                un esempio per provare il programma
 ├── docs/
 │   ├── architecture.json                        dati dell'immagine di Architettura
+│   ├── NOT_YET.md                               buone idee fuori da questa versione, con il perché e il quando
+│   ├── REQUIREMENTS.md                          il registro dei requisiti: stato, evidenza e test di ciascuno
+│   ├── SCOPE.md                                 a cosa serve, cosa non farà e cosa non decide mai
+│   ├── STATUS.md                                cosa esiste, cosa manca e cosa è ancora aperto
 │   └── structure.json                           dati dell'immagine di Struttura
 ├── tools/                                       controllo della CI e del README e strumenti per le immagini
 ├── images/                                      banner e le immagini di Architettura e Struttura del repository
@@ -147,6 +160,7 @@ EH3D-TOOL-MANAGER/
 ├── Cargo.toml Cargo.lock                        il workspace e le sue dipendenze bloccate
 ├── rust-toolchain.toml                          la toolchain Rust fissata
 ├── CHANGELOG.md                                 cosa è cambiato in ogni versione
+├── AGENTS.md                                    le regole per chi modifica il repository
 ├── SECURITY.md SUPPORT.md                       come segnalare una vulnerabilità e dove chiedere
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   come contribuire, codice di condotta e licenza
 └── tools.cfg.example                            tutte le impostazioni di tools.cfg con il valore predefinito
@@ -176,7 +190,7 @@ Per fare un'immagine della finestra senza aprirla a mano, eseguila con `--shot F
 
 ## 🧪 Test
 
-La suite ha 207 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
+La suite ha 224 test (`cargo test`, eseguiti su Windows e Linux nella CI). Verificano i casi normali, i casi limite e gli input danneggiati: file vuoti, spazzatura e file tagliati non causano mai un panico. La CI esegue anche `cargo fmt --check`, `cargo clippy` (anche con `--features gui`) con gli avvisi come errori e `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilazione e rilascio
 
@@ -199,6 +213,7 @@ Ogni versione contiene il programma a riga di comando e la finestra per Windows 
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  una parte della logica
+│   ├── check.rs                                 il controllo: utensili e fogli di un lavoro sono nel magazzino
 │   ├── cli_args.rs                              gli argomenti della riga di comando, letti con rigore
 │   ├── csv.rs                                   una parte della logica
 │   ├── files.rs                                 file letti con limite di dimensione, scritti tramite temporaneo
@@ -208,7 +223,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   la libreria: ciò che usa ogni comando
 │   ├── main.rs                                  la riga di comando
 │   ├── model.rs                                 una parte della logica
+│   ├── profile.rs                               il profilo di taglio di un utensile in un materiale (feature common-machining)
 │   ├── settings.rs                              le impostazioni di tools.cfg: lingua, dimensione della finestra, file del magazzino e numeri del calcolo
+│   ├── sheet.rs                                 un foglio per stencil: spessore, riduzione, kerf e rapporti
 │   ├── shot.rs                                  la modalità immagine della finestra (--shot): i suoi argomenti, letti e verificati senza schermo
 │   ├── store.rs                                 una parte della logica
 │   └── window.rs                                lo stato della finestra senza schermo: il magazzino, il modulo, i filtri e il calcolatore
@@ -217,6 +234,10 @@ EH3D-TOOL-MANAGER/
 │   ├── files.rs                                 test del limite di dimensione e della scrittura atomica dei file
 │   ├── shot_sample.rs                           test della cassetta di esempio e della finestra di un'immagine
 │   ├── vbit.rs                                  test della larghezza del taglio di una fresa a V: il comando, la profondità in calc e le impostazioni
+│   ├── check.rs                                 test del controllo, dei suoi codici di uscita e dei comandi dei fogli
+│   ├── fuzz.rs                                  un fuzz con seme fisso dei lettori di tabelle e magazzino
+│   ├── profile.rs                               test del profilo di taglio (feature common-machining)
+│   ├── sheets.rs                                test dei fogli: modello, JSON, tabella e limiti di lettura
 │   └── reqs.rs                                  test del registro dei requisiti
 ├── examples/
 │   └── crib.json                                un esempio per provare il programma

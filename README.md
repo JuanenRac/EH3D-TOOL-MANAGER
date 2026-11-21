@@ -18,7 +18,7 @@
 
 ---
 
-**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 207 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
+**Honesty check - what actually runs today:** a Rust library and a command line program (`eh3d-tools`) with 224 tests that run on a computer: keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material. A window (`eh3d-tools-gui`, built with the `gui` feature) is written and its logic is tested, but it has not been built or looked at on a screen; nothing has been tried on a machine and nothing has been checked against a collection of real files.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.1.1` |
 | Maturity | Scaffolding |
-| Tests | 207 |
+| Tests | 224 |
 | Stack | Rust |
 | On real hardware | Not tried: nothing here has run on a machine |
 
@@ -47,7 +47,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Core | 🟡 | keeps the tools with their geometry and wear, stores them as JSON or CSV and works out starting feeds and speeds by material; tested on a computer with normal and damaged input, not with a collection of real files. |
 | Command line | 🟡 | `eh3d-tools` runs the same functions as the library and prints the result; every error comes back as a message and a non-zero exit code. |
-| Tests | 🟡 | 207 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated shift of jobs (reports that are not numbers, tools that are gone, saves that fail, a crib file cut in the middle) with its recovery. |
+| Tests | 🟡 | 224 tests pass (`cargo test`), with normal cases, edge cases and damaged input, and a simulated shift of jobs (reports that are not numbers, tools that are gone, saves that fail, a crib file cut in the middle) with its recovery. |
 | Security | 🟡 | Plain safe Rust (`forbid(unsafe_code)`): nothing panics on the files it is given and a bad value is an error with its reason; no independent review. |
 | Window | 🟠 | Written (egui, `--features gui`, program `eh3d-tools-gui`): a table of the tools that are added, changed and removed with the checks of the command line, filters and search, CSV import and export with the errors of the library, and a calculator of feeds and speeds that shows its formulas and conditions; its logic is tested, but it has not been built or looked at on a screen yet. |
 | Real hardware | 🔴 | Not tried: nothing here has been run on a machine. |
@@ -98,6 +98,7 @@ How the parts of this repository fit together: who uses it, what it holds and wh
 * **The width of the cut of a V-bit:** `eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]` works out `2 x depth x tan(angle / 2) + flat` (a 60 degree bit at 0.5 mm makes 0.5774 mm plus the flat of 0.1 mm = 0.6774 mm); the angle is 10 to 170 degrees, the depth 0 to 100 mm and the flat 0 to 5 mm, and what is not given is the value of `tools.cfg`. `calc --depth MM` uses that width as the diameter a V-bit or an engraver works with in the feeds and speeds, and the calculator of the window has a field for the depth, shows the width of the cut and the formula with its numbers; without a depth the numbers are the ones of always.
 * **Putting the previous crib back:** `eh3d-tools restore FILE.json` replaces the file by `FILE.json.bak` (the crib that the last save kept) after checking that the backup reads, keeps the file it replaces as `FILE.json.damaged` and warns that whatever was saved after the backup is not in it; the window has a "Restore backup" button for the same. Nothing is ever restored by itself.
 * **Listing, one tool in full, replacing, removing and the sums:** `eh3d-tools list FILE.json [--kind KIND] [--worn] [--sort id|name|wear]` shows only a kind or only the worn tools, by number, by name or the most worn first (and says `no tool matches` when nothing does); `show FILE.json ID` prints every value of a tool and what is left before each limit; `replace FILE.json ID` puts a new tool in the place of a worn one (the counters go back to zero, the rest stays, and the previous crib is kept as `.bak`); `remove FILE.json ID` takes a tool out (its number is not given again); `stats FILE.json` adds up the tools, hours, metres, holes and tools to replace by kind. Each one is a function of the library (`Crib::select`, `Tool::remaining`, `Crib::replace_tool`, `Crib::summary`).
+* **Sheets of stencil material, a check of the crib and a cutting profile:** `add-sheet FILE.json NAME MATERIAL THICKNESS_MM [--reduction MM] [--kerf MM] [--min-aspect R] [--min-area R]` keeps a sheet beside the tools (its material, its thickness, how much each aperture is made smaller on each side, the kerf of the beam, and the least aspect ratio and area ratio of an aperture, 0 for no limit); `list-sheets`, `remove-sheet`, `export-sheets-csv` and `import-sheets-csv` handle them. The table of the tools keeps its columns and holds no sheet, so a program that reads it reads it as before; the sheets have a table of their own whose `kind` is always `sheet`, and a crib that has sheets is written as format 2, which a program that only knows format 1 refuses instead of dropping the sheets. `check FILE.json [--needs TABLE.csv]` checks that every tool (by name and diameter) and every sheet (by name and thickness) that a job needs, written as a table with the columns `name,kind,size_mm`, is in the crib and that the crib agrees with itself, and ends with the exit code 2 when it is not passed (1 stays for an error). `max_csv_rows` and `check_tolerance_mm` of `tools.cfg` bound the tables and the sizes, and a row that is wrong is named by its number. `profile FILE.json ID MATERIAL_ID`, in a build with `--features common-machining`, reads the starting point of a tool in a material from the machining database of EH3D-COMMON and says first that the figures were not tried on a machine.
 
 ## 🔒 Security & Safety
 
@@ -117,6 +118,7 @@ The library is `eh3d_tool_manager` (`use eh3d_tool_manager::...`); the command l
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  a part of the logic
+│   ├── check.rs                                 the check: the tools and sheets a job needs are in the crib
 │   ├── cli_args.rs                              the arguments of the command line, read strictly
 │   ├── csv.rs                                   a part of the logic
 │   ├── files.rs                                 files read with a size limit, written through a temporary file
@@ -126,7 +128,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── model.rs                                 a part of the logic
+│   ├── profile.rs                               the cutting profile of a tool in a material (feature common-machining)
 │   ├── settings.rs                              the settings of tools.cfg: language, window size, crib file and the numbers of the calculation
+│   ├── sheet.rs                                 a sheet of stencil material: thickness, reduction, kerf and ratios
 │   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   ├── store.rs                                 a part of the logic
 │   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
@@ -134,11 +138,20 @@ EH3D-TOOL-MANAGER/
 │   ├── crib.rs                                  tests of the library and the command line
 │   ├── files.rs                                 tests of the size limit and of the atomic write of the files
 │   ├── shot_sample.rs                           tests of the sample crib and of the window of a picture
-│   └── vbit.rs                                  tests of the width of the cut of a V-bit: the command, the depth in calc and the settings
+│   ├── vbit.rs                                  tests of the width of the cut of a V-bit: the command, the depth in calc and the settings
+│   ├── check.rs                                 tests of the check, its exit codes and the sheet commands
+│   ├── fuzz.rs                                  a fuzz with a fixed seed of the table and crib readers
+│   ├── profile.rs                               tests of the cutting profile (feature common-machining)
+│   ├── sheets.rs                                tests of the sheets: model, JSON, table and read limits
+│   └── reqs.rs                                  tests of the register of requirements
 ├── examples/
 │   └── crib.json                                a sample to try the program with
 ├── docs/
 │   ├── architecture.json                        data of the Architecture picture
+│   ├── NOT_YET.md                               good ideas that are left out of this version, with why and when
+│   ├── REQUIREMENTS.md                          the register of requirements: state, evidence and the test of each
+│   ├── SCOPE.md                                 what the program is for, what it will not do and what it never decides
+│   ├── STATUS.md                                what exists, what is missing and what is still open
 │   └── structure.json                           data of the Repository Structure picture
 ├── tools/                                       CI check, README check and the picture tools
 ├── images/                                      banner and the Architecture and Repository Structure pictures
@@ -147,6 +160,7 @@ EH3D-TOOL-MANAGER/
 ├── Cargo.toml Cargo.lock                        the workspace and its locked dependencies
 ├── rust-toolchain.toml                          the pinned Rust toolchain
 ├── CHANGELOG.md                                 what changed in each version
+├── AGENTS.md                                    the rules for anyone who changes the repository
 ├── SECURITY.md SUPPORT.md                       how to report a vulnerability and where to ask
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   how to contribute, the code of conduct and the licence
 └── tools.cfg.example                            every setting of tools.cfg with its default
@@ -176,7 +190,7 @@ To take a picture of the window without opening it by hand, run it with `--shot 
 
 ## 🧪 Testing
 
-The suite has 207 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
+The suite has 224 tests (`cargo test`, run on Windows and Linux in the CI). They check the normal cases, the edge cases and damaged input: empty files, garbage and cut files never panic. The CI also runs `cargo fmt --check`, `cargo clippy` (also with `--features gui`) with warnings as errors and `python -I tools/ci_validate.py`.
 
 ## 🏗️ Build & Release
 
@@ -199,6 +213,7 @@ Each release has the command line program and the window for Windows (64 and 32 
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  a part of the logic
+│   ├── check.rs                                 the check: the tools and sheets a job needs are in the crib
 │   ├── cli_args.rs                              the arguments of the command line, read strictly
 │   ├── csv.rs                                   a part of the logic
 │   ├── files.rs                                 files read with a size limit, written through a temporary file
@@ -208,7 +223,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   the library: what every command uses
 │   ├── main.rs                                  the command line
 │   ├── model.rs                                 a part of the logic
+│   ├── profile.rs                               the cutting profile of a tool in a material (feature common-machining)
 │   ├── settings.rs                              the settings of tools.cfg: language, window size, crib file and the numbers of the calculation
+│   ├── sheet.rs                                 a sheet of stencil material: thickness, reduction, kerf and ratios
 │   ├── shot.rs                                  the picture mode of the window (--shot): its arguments, read and checked without a screen
 │   ├── store.rs                                 a part of the logic
 │   └── window.rs                                the state of the window, no screen needed: the crib, the form, the filters and the calculator
@@ -217,6 +234,10 @@ EH3D-TOOL-MANAGER/
 │   ├── files.rs                                 tests of the size limit and of the atomic write of the files
 │   ├── shot_sample.rs                           tests of the sample crib and of the window of a picture
 │   ├── vbit.rs                                  tests of the width of the cut of a V-bit: the command, the depth in calc and the settings
+│   ├── check.rs                                 tests of the check, its exit codes and the sheet commands
+│   ├── fuzz.rs                                  a fuzz with a fixed seed of the table and crib readers
+│   ├── profile.rs                               tests of the cutting profile (feature common-machining)
+│   ├── sheets.rs                                tests of the sheets: model, JSON, table and read limits
 │   └── reqs.rs                                  tests of the register of requirements
 ├── examples/
 │   └── crib.json                                a sample to try the program with

@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because the wear and the feeds and speeds have not been checked on a real machine.
 
-The register has 31 requirements: 22 implemented, 4 prototype, 5 planned and 0 validated. By progress: 22 done, 4 partial, 2 pending and 3 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 41 requirements: 30 implemented, 5 prototype, 6 planned and 0 validated. By progress: 30 done, 5 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -70,3 +70,18 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | TMGR-029 | The window has a file dialog for the crib and the CSV table. | planned | pending | none | `planned:file_dialog::the_window_opens_a_crib_with_a_dialog` | The window asks for a written path today. |
 | TMGR-030 | The feeds and speeds are checked on a machine. | planned | blocked | none | `planned:real_cuts::the_feeds_and_speeds_cut_well_on_a_machine` | Needs a machine and a person. |
 | TMGR-031 | The window is looked at on a screen of each system. | planned | blocked | none | `planned:window_screen::the_window_matches_the_reference_picture` | Needs a person at a screen. |
+
+## Sheets, the check and the cutting profile
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| TMGR-032 | A sheet of stencil material is numbered with a number of its own, a repeated name is refused and a value that makes no sense is refused with the name of the field. | implemented | done | host-test | `sheets::a_sheet_is_numbered_and_refuses_a_repeated_name_and_what_makes_no_sense` | - |
+| TMGR-033 | A crib with sheets round-trips in JSON as format 2, keeping the keys it does not know, and a crib with no sheet is written as before. | implemented | done | host-test | `sheets::a_sheet_round_trips_in_json_and_a_crib_with_no_sheet_is_written_as_before` | - |
+| TMGR-034 | The table of the tools keeps its header and holds no sheet, and the sheets have a table of their own whose kind is always sheet. | implemented | done | host-test | `sheets::the_table_of_tools_does_not_change_and_the_sheets_have_a_table_of_their_own` | - |
+| TMGR-035 | An aperture is checked against the least aspect ratio and area ratio of its sheet and against the reduction; a limit of 0 is not applied. | implemented | done | host-test | `sheets::an_aperture_is_checked_against_the_ratios_and_the_reduction` | The limits are what the person wrote; the program has no default for them. |
+| TMGR-036 | The check finds every tool and sheet that a job needs by name and size, and says what is missing. | implemented | done | host-test | `check::a_check_finds_the_tools_and_sheets_a_job_needs_and_names_what_is_missing` | - |
+| TMGR-037 | The check command ends with the code 2 when it is not passed and with 1 when it cannot run. | implemented | done | host-test | `check::the_command_ends_with_code_2_when_the_check_is_not_passed_and_1_when_it_cannot_run` | - |
+| TMGR-038 | A table with more rows than the limit is refused and a broken quote names its row. | implemented | done | host-test | `sheets::a_table_with_more_rows_than_the_limit_is_refused_and_a_broken_quote_names_its_row` | - |
+| TMGR-039 | A fuzz with a fixed seed of the readers never panics, and what is read is written back the same. | implemented | done | host-test | `fuzz::a_seeded_fuzz_of_the_readers_never_panics_and_what_reads_writes_back_the_same` | - |
+| TMGR-040 | The cutting profile of a tool in a material is read from the machining database of EH3D-COMMON and says first that its figures were not tried on a machine. | prototype | partial | host-test | `profile::a_profile_comes_from_the_database_and_says_when_it_was_not_verified` | Built only with the feature common-machining, which the CI cannot build until it checks out a release of EH3D-COMMON that has the module; the figures were not tried on a machine. |
+| TMGR-041 | The CAM programs take the sheet and its kerf from the crib. | planned | blocked | none | `planned:cam_reads_sheets::stencilcam_takes_its_sheet_and_kerf_from_the_crib` | Needs the programs that cut a stencil to read the table of sheets. |

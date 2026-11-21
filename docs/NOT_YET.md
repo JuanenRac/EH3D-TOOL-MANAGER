@@ -10,3 +10,6 @@ Good ideas that are not in the current version. Writing them here keeps anybody 
 | A database for the crib | A JSON file is enough for one shop and one person at a time; the server keeps revisions for the rest | several programs write the crib at the same time |
 | Feeds and speeds checked on a machine | The numbers are typical values and nothing here has run on a machine | a person cuts with a tool and gives the result |
 | Measuring a tool | The values are typed; nothing reads a real tool | the vision program of the suite measures a tool |
+| Sheets, the check and the cutting profile in the window | They are on the command line; the window shows tools only | the window has been looked at on a screen of each system |
+| A cutting profile for a laser or a nozzle | The machining database gives a laser point by its nominal power and the crib holds no power for a laser tool | the crib holds the power of a laser tool |
+| Putting the profile figures into the calculator | The figures of the database are starting points that nobody tried on a machine, like the typical values of the calculator | a person tries the figures of the database on a machine |

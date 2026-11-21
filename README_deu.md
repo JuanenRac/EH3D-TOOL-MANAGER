@@ -18,7 +18,7 @@
 
 ---
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 207 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
+**Ehrlichkeitscheck - was heute wirklich läuft:** eine Rust-Bibliothek und ein Kommandozeilenprogramm (`eh3d-tools`) mit 224 Tests, die auf einem Computer laufen: verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material. Ein Fenster (`eh3d-tools-gui`, mit dem Feature `gui` gebaut) ist geschrieben und seine Logik getestet, aber es wurde weder gebaut noch auf einem Bildschirm angesehen; nichts wurde an einer Maschine ausprobiert und nichts an einer Sammlung echter Dateien geprüft.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Version | `0.1.1` |
 | Reifegrad | Gerüst |
-| Tests | 207 |
+| Tests | 224 |
 | Technologie-Stack | Rust |
 | Auf echter Hardware | Nicht erprobt: nichts davon lief an einer Maschine |
 
@@ -47,7 +47,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Kern | 🟡 | verwaltet die Werkzeuge mit Geometrie und Verschleiß, speichert sie als JSON oder CSV und berechnet Start-Vorschübe und Drehzahlen je Material; am Computer mit normalen und beschädigten Eingaben getestet, nicht mit einer Sammlung echter Dateien. |
 | Kommandozeile | 🟡 | `eh3d-tools` führt dieselben Funktionen wie die Bibliothek aus und gibt das Ergebnis aus; jeder Fehler kommt als Meldung mit einem Exit-Code ungleich null zurück. |
-| Tests | 🟡 | 207 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben sowie einer simulierten Schicht von Aufträgen (Meldungen, die keine Zahlen sind, Werkzeuge, die es nicht mehr gibt, Speicherungen, die scheitern, eine mittendrin abgeschnittene Magazindatei) samt Wiederherstellung. |
+| Tests | 🟡 | 224 Tests bestehen (`cargo test`), mit Normalfällen, Grenzfällen und beschädigten Eingaben sowie einer simulierten Schicht von Aufträgen (Meldungen, die keine Zahlen sind, Werkzeuge, die es nicht mehr gibt, Speicherungen, die scheitern, eine mittendrin abgeschnittene Magazindatei) samt Wiederherstellung. |
 | Sicherheit | 🟡 | Reines sicheres Rust (`forbid(unsafe_code)`): nichts gerät bei den übergebenen Dateien in Panik und ein schlechter Wert ist ein Fehler mit Begründung; keine unabhängige Prüfung. |
 | Fenster | 🟠 | Geschrieben (egui, `--features gui`, Programm `eh3d-tools-gui`): eine Tabelle der Werkzeuge, die mit den Prüfungen der Kommandozeile hinzugefügt, geändert und entfernt werden, Filter und Suche, CSV-Import und -Export mit den Fehlern der Bibliothek und ein Rechner für Vorschübe und Drehzahlen, der seine Formeln und Bedingungen zeigt; seine Logik ist getestet, aber es wurde noch nicht gebaut oder auf einem Bildschirm angesehen. |
 | Echte Hardware | 🔴 | Nicht erprobt: nichts davon wurde an einer Maschine ausgeführt. |
@@ -98,6 +98,7 @@ Wie die Teile dieses Repositorys zusammenpassen: wer es nutzt, was es enthält u
 * **Die Schnittbreite eines V-Fräsers:** `eh3d-tools vbit --depth MM [--angle GRAD] [--flat MM]` berechnet `2 x Tiefe x tan(Winkel / 2) + Spitzenfläche` (ein 60-Grad-Fräser bei 0,5 mm ergibt 0,5774 mm plus die flache Spitze von 0,1 mm = 0,6774 mm); der Winkel liegt zwischen 10 und 170 Grad, die Tiefe zwischen 0 und 100 mm und die flache Spitze zwischen 0 und 5 mm, und was nicht angegeben ist, ist der Wert aus `tools.cfg`. `calc --depth MM` nimmt diese Breite als Durchmesser, mit dem ein V-Fräser oder Gravierstichel in den Vorschüben und Drehzahlen arbeitet, und der Rechner des Fensters hat ein Feld für die Tiefe, zeigt die Schnittbreite und die Formel mit ihren Zahlen; ohne Tiefe sind die Zahlen die gewohnten.
 * **Den vorherigen Stand zurückholen:** `eh3d-tools restore DATEI.json` ersetzt die Datei durch `DATEI.json.bak` (den Stand, den das letzte Speichern behielt), nachdem geprüft wurde, dass die Sicherung lesbar ist, behält die ersetzte Datei als `DATEI.json.damaged` und warnt, dass alles, was nach dieser Sicherung gespeichert wurde, nicht darin enthalten ist; das Fenster hat dafür die Schaltfläche "Sicherung wiederherstellen". Nichts wird je von selbst wiederhergestellt.
 * **Auflisten, ein Werkzeug vollständig, Ersetzen, Entfernen und die Summen:** `eh3d-tools list DATEI.json [--kind ART] [--worn] [--sort id|name|wear]` zeigt nur eine Art oder nur die verschlissenen Werkzeuge, nach Nummer, nach Name oder die am stärksten verschlissenen zuerst (und meldet `no tool matches`, wenn keines passt); `show DATEI.json ID` gibt alle Werte eines Werkzeugs aus und was bis zu jeder Grenze noch bleibt; `replace DATEI.json ID` setzt ein neues Werkzeug an die Stelle eines verschlissenen (die Zähler gehen auf null zurück, alles andere bleibt, und die vorherige Werkzeugkartei wird als `.bak` aufbewahrt); `remove DATEI.json ID` nimmt ein Werkzeug heraus (seine Nummer wird nicht wieder vergeben); `stats DATEI.json` summiert Werkzeuge, Stunden, Meter, Löcher und zu ersetzende Werkzeuge nach Art. Jedes davon ist eine Funktion der Bibliothek (`Crib::select`, `Tool::remaining`, `Crib::replace_tool`, `Crib::summary`).
+* **Schablonenbleche, eine Prüfung des Magazins und ein Schnittprofil:** `add-sheet FILE.json NAME MATERIAL THICKNESS_MM [--reduction MM] [--kerf MM] [--min-aspect R] [--min-area R]` legt ein Blech neben den Werkzeugen ab (Material, Dicke, wie viel jede Öffnung auf jeder Seite verkleinert wird, die Schnittfuge des Strahls sowie das kleinste Seitenverhältnis und Flächenverhältnis einer Öffnung, 0 für keine Grenze); `list-sheets`, `remove-sheet`, `export-sheets-csv` und `import-sheets-csv` verwalten sie. Die Tabelle der Werkzeuge behält ihre Spalten und enthält keine Bleche, ein Programm, das sie liest, liest sie also wie zuvor; die Bleche haben eine eigene Tabelle, deren `kind` immer `sheet` ist, und ein Magazin mit Blechen wird als Format 2 geschrieben, das ein Programm, das nur Format 1 kennt, ablehnt, statt die Bleche zu verlieren. `check FILE.json [--needs TABLE.csv]` prüft, dass jedes Werkzeug (nach Name und Durchmesser) und jedes Blech (nach Name und Dicke), das ein Auftrag braucht und das als Tabelle mit den Spalten `name,kind,size_mm` geschrieben ist, im Magazin ist und dass das Magazin in sich stimmig ist, und endet mit dem Exit-Code 2, wenn die Prüfung nicht bestanden ist (1 bleibt für einen Fehler). `max_csv_rows` und `check_tolerance_mm` in `tools.cfg` begrenzen die Tabellen und die Größen, und eine falsche Zeile wird mit ihrer Nummer genannt. `profile FILE.json ID MATERIAL_ID` liest in einem Build mit `--features common-machining` den Startpunkt eines Werkzeugs in einem Material aus der Bearbeitungsdatenbank von EH3D-COMMON und sagt als Erstes, dass die Werte nicht an einer Maschine erprobt wurden.
 
 ## 🔒 Sicherheit und Schutz
 
@@ -117,6 +118,7 @@ Die Bibliothek ist `eh3d_tool_manager` (`use eh3d_tool_manager::...`); die Komma
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  ein Teil der Logik
+│   ├── check.rs                                 die Prüfung: Werkzeuge und Bleche eines Auftrags sind im Magazin
 │   ├── cli_args.rs                              die Argumente der Befehlszeile, streng gelesen
 │   ├── csv.rs                                   ein Teil der Logik
 │   ├── files.rs                                 Dateien mit Größenlimit lesen, über eine temporäre schreiben
@@ -126,7 +128,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── model.rs                                 ein Teil der Logik
+│   ├── profile.rs                               das Schnittprofil eines Werkzeugs in einem Material (Feature common-machining)
 │   ├── settings.rs                              die Einstellungen aus tools.cfg: Sprache, Fenstergröße, Werkzeugdatei und die Zahlen der Berechnung
+│   ├── sheet.rs                                 ein Schablonenblech: Dicke, Verkleinerung, Schnittfuge und Verhältnisse
 │   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
 │   ├── store.rs                                 ein Teil der Logik
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner
@@ -134,11 +138,20 @@ EH3D-TOOL-MANAGER/
 │   ├── crib.rs                                  Tests von Bibliothek und Kommandozeile
 │   ├── files.rs                                 Tests des Größenlimits und des atomaren Schreibens der Dateien
 │   ├── shot_sample.rs                           Tests der Beispiel-Werkzeugkiste und des Fensters eines Bildes
-│   └── vbit.rs                                  Tests der Schnittbreite eines V-Fräsers: der Befehl, die Tiefe in calc und die Einstellungen
+│   ├── vbit.rs                                  Tests der Schnittbreite eines V-Fräsers: der Befehl, die Tiefe in calc und die Einstellungen
+│   ├── check.rs                                 Tests der Prüfung, ihrer Exit-Codes und der Blech-Befehle
+│   ├── fuzz.rs                                  ein Fuzz mit festem Seed der Tabellen- und Magazinleser
+│   ├── profile.rs                               Tests des Schnittprofils (Feature common-machining)
+│   ├── sheets.rs                                Tests der Bleche: Modell, JSON, Tabelle und Lesegrenzen
+│   └── reqs.rs                                  Tests des Anforderungsregisters
 ├── examples/
 │   └── crib.json                                ein Beispiel zum Ausprobieren
 ├── docs/
 │   ├── architecture.json                        Daten des Architektur-Bildes
+│   ├── NOT_YET.md                               gute Ideen außerhalb dieser Version, mit Grund und Zeitpunkt
+│   ├── REQUIREMENTS.md                          das Register der Anforderungen: Stand, Nachweis und Test jeder einzelnen
+│   ├── SCOPE.md                                 wofür es da ist, was es nicht tut und was es nie entscheidet
+│   ├── STATUS.md                                was es gibt, was fehlt und was offen ist
 │   └── structure.json                           Daten des Struktur-Bildes
 ├── tools/                                       CI-Prüfung, README-Prüfung und die Bildwerkzeuge
 ├── images/                                      Banner und die Bilder von Architektur und Repository-Struktur
@@ -147,6 +160,7 @@ EH3D-TOOL-MANAGER/
 ├── Cargo.toml Cargo.lock                        der Workspace und seine festgelegten Abhängigkeiten
 ├── rust-toolchain.toml                          die festgelegte Rust-Toolchain
 ├── CHANGELOG.md                                 was sich in jeder Version geändert hat
+├── AGENTS.md                                    die Regeln für alle, die das Repository ändern
 ├── SECURITY.md SUPPORT.md                       Schwachstellen melden und Fragen stellen
 ├── CONTRIBUTING.md CODE_OF_CONDUCT.md LICENSE   Mitwirken, Verhaltenskodex und Lizenz
 └── tools.cfg.example                            alle Einstellungen von tools.cfg mit ihrem Standardwert
@@ -176,7 +190,7 @@ Um ein Bild des Fensters aufzunehmen, ohne es von Hand zu öffnen, starten Sie e
 
 ## 🧪 Tests
 
-Die Suite hat 207 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
+Die Suite hat 224 Tests (`cargo test`, in der CI unter Windows und Linux). Sie prüfen Normalfälle, Grenzfälle und beschädigte Eingaben: leere Dateien, Datenmüll und abgeschnittene Dateien lösen nie eine Panik aus. Die CI führt außerdem `cargo fmt --check`, `cargo clippy` (auch mit `--features gui`) mit Warnungen als Fehlern und `python -I tools/ci_validate.py` aus.
 
 ## 🏗️ Build und Veröffentlichung
 
@@ -199,6 +213,7 @@ Jedes Release enthält das Kommandozeilenprogramm und das Fenster für Windows (
 EH3D-TOOL-MANAGER/
 ├── src/
 │   ├── calc.rs                                  ein Teil der Logik
+│   ├── check.rs                                 die Prüfung: Werkzeuge und Bleche eines Auftrags sind im Magazin
 │   ├── cli_args.rs                              die Argumente der Befehlszeile, streng gelesen
 │   ├── csv.rs                                   ein Teil der Logik
 │   ├── files.rs                                 Dateien mit Größenlimit lesen, über eine temporäre schreiben
@@ -208,7 +223,9 @@ EH3D-TOOL-MANAGER/
 │   ├── lib.rs                                   die Bibliothek: was jeder Befehl nutzt
 │   ├── main.rs                                  die Kommandozeile
 │   ├── model.rs                                 ein Teil der Logik
+│   ├── profile.rs                               das Schnittprofil eines Werkzeugs in einem Material (Feature common-machining)
 │   ├── settings.rs                              die Einstellungen aus tools.cfg: Sprache, Fenstergröße, Werkzeugdatei und die Zahlen der Berechnung
+│   ├── sheet.rs                                 ein Schablonenblech: Dicke, Verkleinerung, Schnittfuge und Verhältnisse
 │   ├── shot.rs                                  der Bildmodus des Fensters (--shot): seine Argumente, ohne Bildschirm gelesen und geprüft
 │   ├── store.rs                                 ein Teil der Logik
 │   └── window.rs                                der Zustand des Fensters ohne Bildschirm: Bestand, Formular, Filter und Rechner
@@ -217,6 +234,10 @@ EH3D-TOOL-MANAGER/
 │   ├── files.rs                                 Tests des Größenlimits und des atomaren Schreibens der Dateien
 │   ├── shot_sample.rs                           Tests der Beispiel-Werkzeugkiste und des Fensters eines Bildes
 │   ├── vbit.rs                                  Tests der Schnittbreite eines V-Fräsers: der Befehl, die Tiefe in calc und die Einstellungen
+│   ├── check.rs                                 Tests der Prüfung, ihrer Exit-Codes und der Blech-Befehle
+│   ├── fuzz.rs                                  ein Fuzz mit festem Seed der Tabellen- und Magazinleser
+│   ├── profile.rs                               Tests des Schnittprofils (Feature common-machining)
+│   ├── sheets.rs                                Tests der Bleche: Modell, JSON, Tabelle und Lesegrenzen
 │   └── reqs.rs                                  Tests des Anforderungsregisters
 ├── examples/
 │   └── crib.json                                ein Beispiel zum Ausprobieren
