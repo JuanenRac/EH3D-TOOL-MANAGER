@@ -3,9 +3,11 @@
 //! project points to one artifact, through the routes `/api/v1/artifacts` and `/api/v1/projects` of the server; none of them needs a header, and a revision says which
 //! revision it follows, so two computers that push at the same time do not overwrite each other: the second one is refused and has to pull first.
 
-use crate::server::{explain, send_artifact};
+use crate::files;
+use crate::server::{explain, require, send_artifact};
 use eh3d_serverclient::json::{quote, Json};
 use eh3d_serverclient::{path_segment, Client, Lang};
+use std::path::{Path, PathBuf};
 
 /// The name of the project of the crib when none is given.
 pub const DEFAULT_NAME: &str = "tool-crib";
@@ -82,10 +84,71 @@ fn find_project(
     Ok(None)
 }
 
-/// Keeps the crib (`data`, the text of its JSON) as a new revision of the project `name`, making the project the first time. The artifact is made first; a refusal of
-/// the revision (the project moved on since the last pull) leaves the artifact on the server, where it is harmless.
-pub fn push(client: &mut Client, name: &str, data: &[u8], lang: Lang) -> Result<Pushed, String> {
+/// The revision of a project a local copy of the crib starts from: what the last `pull` or `push` of that file left.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Base {
+    pub project_id: String,
+    pub revision: u64,
+}
+
+/// The file beside a crib that says which revision it starts from (`crib.json.sync`).
+pub fn base_file(crib: &Path) -> PathBuf {
+    let mut name = crib.as_os_str().to_owned();
+    name.push(".sync");
+    PathBuf::from(name)
+}
+
+/// The base written beside the crib; `None` when there is none or it does not read, which a push of a project that has revisions refuses.
+pub fn read_base(crib: &Path) -> Option<Base> {
+    let text = files::read_text_limited(&base_file(crib), 4096).ok()?;
+    let value = |key: &str| {
+        text.lines().find_map(|l| {
+            let (k, v) = l.split_once('=')?;
+            (k.trim() == key).then(|| v.trim().to_string())
+        })
+    };
+    let project_id = value("project_id").filter(|v| !v.is_empty())?;
+    let revision = value("revision")?.parse().ok()?;
+    Some(Base {
+        project_id,
+        revision,
+    })
+}
+
+/// Writes down which revision the crib now starts from.
+pub fn write_base(crib: &Path, base: &Base) -> Result<(), String> {
+    let text = format!(
+        "project_id = {}\nrevision = {}\n",
+        base.project_id, base.revision
+    );
+    files::write_atomic(&base_file(crib), text.as_bytes())
+}
+
+/// Keeps the crib (`data`, the text of its JSON) as a new revision of the project `name`, making the project the first time. A project that has revisions takes the push
+/// only from a copy whose `base` is its last revision: any other copy would overwrite what somebody else pushed, so it is refused before anything is sent and has to pull
+/// first. The artifact is made before the revision; a refusal of the revision (the project moved on in between) leaves the artifact on the server, where it is harmless.
+pub fn push(
+    client: &mut Client,
+    name: &str,
+    data: &[u8],
+    base: Option<&Base>,
+    lang: Lang,
+) -> Result<Pushed, String> {
     let name = check_name(name)?;
+    require(client.settings())?;
+    let found = find_project(client, name, lang)?;
+    if let Some((id, head)) = &found {
+        let starts_here = base.is_some_and(|b| b.project_id == *id && b.revision == *head);
+        if *head > 0 && !starts_here {
+            let from = match base {
+                Some(b) if b.project_id == *id => format!("revision {}", b.revision),
+                _ => "no revision of it".to_string(),
+            };
+            return Err(format!(
+                "{name}: not pushed: the server is at revision {head} and this copy starts from {from}; pull it first, then make your changes again"
+            ));
+        }
+    }
     let sent = send_artifact(
         client,
         &format!("{name}.json"),
@@ -94,7 +157,7 @@ pub fn push(client: &mut Client, name: &str, data: &[u8], lang: Lang) -> Result<
         &[("kind", "tool-crib")],
         lang,
     )?;
-    let (project_id, head, created) = match find_project(client, name, lang)? {
+    let (project_id, head, created) = match found {
         Some((id, head)) => (id, head, false),
         None => {
             let reply = client
@@ -359,19 +422,78 @@ mod tests {
         Client::new(s, Box::new(fake.clone()))
     }
 
+    fn base(done: &Pushed) -> Base {
+        Base {
+            project_id: done.project_id.clone(),
+            revision: done.revision,
+        }
+    }
+
+    #[test]
+    fn a_copy_that_does_not_start_from_the_head_is_refused_and_nothing_is_sent() {
+        let fake = Fake::default();
+        let mut c = client(&fake);
+        let one = push(&mut c, "shop", b"one", None, Lang::En).unwrap();
+        let two = push(&mut c, "shop", b"two", Some(&base(&one)), Lang::En).unwrap();
+        let sent = fake.0.lock().unwrap().artifacts.len();
+        let other = Base {
+            project_id: "p-9".into(),
+            revision: two.revision,
+        };
+        for stale in [Some(base(&one)), None, Some(other)] {
+            let e = push(&mut c, "shop", b"mine", stale.as_ref(), Lang::En).unwrap_err();
+            assert!(e.contains("revision 2") && e.contains("pull"), "{e}");
+        }
+        assert_eq!(fake.0.lock().unwrap().artifacts.len(), sent);
+        assert_eq!(pull(&mut c, "shop", Lang::En).unwrap().text, "two");
+        let three = push(&mut c, "shop", b"three", Some(&base(&two)), Lang::En).unwrap();
+        assert_eq!(three.revision, 3);
+    }
+
+    #[test]
+    fn the_base_of_a_copy_is_written_beside_it_and_a_damaged_one_is_none() {
+        let dir = std::env::temp_dir().join(format!("eh3d-tools-base-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let crib = dir.join("crib.json");
+        assert_eq!(read_base(&crib), None);
+        let kept = Base {
+            project_id: "p-1".into(),
+            revision: 7,
+        };
+        write_base(&crib, &kept).unwrap();
+        assert_eq!(read_base(&crib), Some(kept));
+        for damaged in [
+            "",
+            "revision = 7\n",
+            "project_id = p-1\nrevision = x\n",
+            "project_id =\nrevision = 1\n",
+        ] {
+            std::fs::write(base_file(&crib), damaged).unwrap();
+            assert_eq!(read_base(&crib), None, "{damaged:?}");
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
     #[test]
     fn the_first_push_makes_the_project_and_the_next_ones_add_revisions() {
         let fake = Fake::default();
         let mut c = client(&fake);
-        let first = push(&mut c, "shop", b"{\"tools\":[]}", Lang::En).unwrap();
+        let first = push(&mut c, "shop", b"{\"tools\":[]}", None, Lang::En).unwrap();
         assert!(first.created);
         assert_eq!((first.revision, first.project_id.as_str()), (1, "p-1"));
-        let second = push(&mut c, "shop", b"{\"tools\":[1]}", Lang::En).unwrap();
+        let second = push(
+            &mut c,
+            "shop",
+            b"{\"tools\":[1]}",
+            Some(&base(&first)),
+            Lang::En,
+        )
+        .unwrap();
         assert!(!second.created);
         assert_eq!((second.revision, second.project_id.as_str()), (2, "p-1"));
         assert_ne!(first.artifact_id, second.artifact_id);
         // another name is another project
-        let other = push(&mut c, "bench", b"{}", Lang::En).unwrap();
+        let other = push(&mut c, "bench", b"{}", None, Lang::En).unwrap();
         assert!(other.created && other.project_id == "p-2" && other.revision == 1);
     }
 
@@ -379,8 +501,15 @@ mod tests {
     fn a_pull_gives_back_the_last_revision_and_the_history_lists_them_all() {
         let fake = Fake::default();
         let mut c = client(&fake);
-        push(&mut c, "shop", b"one", Lang::En).unwrap();
-        push(&mut c, "shop", b"two \"quoted\"\nnew line", Lang::En).unwrap();
+        let one = push(&mut c, "shop", b"one", None, Lang::En).unwrap();
+        push(
+            &mut c,
+            "shop",
+            b"two \"quoted\"\nnew line",
+            Some(&base(&one)),
+            Lang::En,
+        )
+        .unwrap();
         let pulled = pull(&mut c, "shop", Lang::En).unwrap();
         assert_eq!(pulled.text, "two \"quoted\"\nnew line");
         assert_eq!(pulled.revision, 2);
@@ -411,13 +540,13 @@ mod tests {
         let fake = Fake::default();
         let mut mine = client(&fake);
         let mut yours = client(&fake);
-        push(&mut mine, "shop", b"one", Lang::En).unwrap();
+        let one = push(&mut mine, "shop", b"one", None, Lang::En).unwrap();
         // the head is read when the push starts: a push that follows another one in between is the one the server refuses
         let id = find_project(&mut yours, "shop", Lang::En)
             .unwrap()
             .unwrap()
             .0;
-        push(&mut mine, "shop", b"two", Lang::En).unwrap();
+        push(&mut mine, "shop", b"two", Some(&base(&one)), Lang::En).unwrap();
         let stale = yours
             .post(
                 &format!("/api/v1/projects/{id}/revisions"),
@@ -433,9 +562,9 @@ mod tests {
         let fake = Fake::default();
         let mut c = client(&fake);
         for bad in ["", "   ", "a\u{7}b"] {
-            assert!(push(&mut c, bad, b"{}", Lang::En).is_err(), "{bad:?}");
+            assert!(push(&mut c, bad, b"{}", None, Lang::En).is_err(), "{bad:?}");
         }
-        assert!(push(&mut c, &"x".repeat(81), b"{}", Lang::En).is_err());
+        assert!(push(&mut c, &"x".repeat(81), b"{}", None, Lang::En).is_err());
         assert!(fake.0.lock().unwrap().requests.is_empty());
         assert_eq!(check_name("  shop ").unwrap(), "shop");
         assert!(check_name(&"x".repeat(80)).is_ok());
@@ -448,7 +577,7 @@ mod tests {
         let mut s = Settings::default();
         s.set("server_address", "127.0.0.1:18200").unwrap();
         let mut c = Client::new(s, Box::new(fake.clone()));
-        let e = push(&mut c, "shop", b"{}", Lang::En).unwrap_err();
+        let e = push(&mut c, "shop", b"{}", None, Lang::En).unwrap_err();
         assert!(e.contains("server_token"), "{e}");
         assert!(fake.0.lock().unwrap().requests.is_empty());
     }

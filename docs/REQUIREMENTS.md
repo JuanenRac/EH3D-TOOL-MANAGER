@@ -55,7 +55,7 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 
 | ID | Requirement | State | Progress | Evidence | Test | Limits |
 |---|---|---|---|---|---|---|
-| TMGR-022 | The first push makes the project on the server and the next ones add revisions; a project that moved on refuses the push. | prototype | partial | simulator | `src/sync::a_project_that_moved_on_refuses_the_push_and_says_so` | Tried against a server in memory, not against a real server. |
+| TMGR-022 | The first push makes the project on the server and the next ones add revisions; a project that moved on refuses the push, and so does a copy that does not start from its last revision. | prototype | partial | simulator | `src/sync::a_project_that_moved_on_refuses_the_push_and_says_so` | Tried against a server in memory, not against a real server. |
 | TMGR-023 | Nothing is sent to the server without an address and a token. | implemented | done | host-test | `src/server::nothing_is_sent_without_a_server_or_a_token` | - |
 | TMGR-024 | The window makes the tool the library would accept and names the field that is wrong. | prototype | partial | host-test | `src/window::the_form_makes_the_tool_the_library_would_accept_and_names_the_field_that_is_wrong` | The logic is tested without a screen; no person has looked at the drawing. |
 | TMGR-025 | The window opens the sample crib with tools of every kind. | prototype | partial | host-test | `shot_sample::the_sample_crib_loads_with_tools_of_every_kind` | The logic is tested without a screen; no person has looked at the drawing. |

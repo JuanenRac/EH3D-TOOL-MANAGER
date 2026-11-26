@@ -1,6 +1,7 @@
 /target
 Cargo.lock.bak
 *.eh3dproj.tmp
+*.json.sync
 .env
 .env.*
 !.env.example

@@ -38,8 +38,8 @@ const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
   eh3d-tools restore FILE.json               put back FILE.json.bak (kept by the last save); the file it replaces is kept as FILE.json.damaged
   eh3d-tools calc KIND DIAMETER_MM MATERIAL MAX_RPM [--flutes N] [--angle DEG] [--depth MM]
   eh3d-tools vbit --depth MM [--angle DEG] [--flat MM]     the width of the cut of a V-bit at a depth
-  eh3d-tools push FILE.json [--name NAME]     keep the crib on the EH3D server as a new revision of the project NAME (tool-crib by default)
-  eh3d-tools pull FILE.json [--name NAME] [--force]   read the last revision of the project back into FILE.json (a file that differs is kept unless --force; the old copy is kept as FILE.json.bak)
+  eh3d-tools push FILE.json [--name NAME]     keep the crib on the EH3D server as a new revision of the project NAME (tool-crib by default); refused unless FILE.json starts from the last revision (pull first)
+  eh3d-tools pull FILE.json [--name NAME] [--force]   read the last revision of the project back into FILE.json (a file that differs is kept unless --force; the old copy is kept as FILE.json.bak; the revision it starts from is noted in FILE.json.sync)
   eh3d-tools history [--name NAME]            the revisions of the project, the oldest first
   eh3d-tools server [status]                  the link to the EH3D server (server_address, server_token, server_machine, server_timeout_s, server_retries, server_mdns and server_max_answer_mib of tools.cfg) and what the server answers
 
@@ -222,11 +222,20 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             cli_args::finish(&args, 1)?;
             let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
             let mut client = server::connect(link()?);
+            let file = Path::new(&args[0]);
             let done = sync::push(
                 &mut client,
                 &name,
                 store::to_json(&crib).as_bytes(),
+                sync::read_base(file).as_ref(),
                 server::language(),
+            )?;
+            sync::write_base(
+                file,
+                &sync::Base {
+                    project_id: done.project_id.clone(),
+                    revision: done.revision,
+                },
             )?;
             println!(
                 "pushed {} tools to the project '{}' of the server: revision {}{} (artifact {})",
@@ -254,11 +263,16 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                     name.trim()
                 )
             })?;
+            let base = sync::Base {
+                project_id: got.project_id.clone(),
+                revision: got.revision,
+            };
             if file.exists() && !force {
                 let same = store::load_with_limit(file, max_mib()?)
                     .map(|local| store::to_json(&local) == store::to_json(&crib))
                     .unwrap_or(false);
                 if same {
+                    sync::write_base(file, &base)?;
                     println!(
                         "{} is already revision {} of '{}'",
                         args[0],
@@ -273,6 +287,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 ));
             }
             store::save(&crib, file)?;
+            sync::write_base(file, &base)?;
             println!(
                 "pulled revision {} of '{}' ({} tools) into {}",
                 got.revision,
