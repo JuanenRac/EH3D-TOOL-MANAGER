@@ -5,6 +5,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 - **Behaviour tests at the exact edge:** `tests/behaviour.rs` adds 51 deterministic tests without changing the behaviour: the cut and its limits (the spindle, the depth of a V-bit, the working diameter, the materials), the wear at 90 and 100 percent, the numbers of the crib up to the last one that fits, the order of the lists, the check and its report (tolerance, sheets, kerf, warnings before problems), the limits of the sheets, seeded random cribs that read back from the tables and the JSON document, documents cut at every position, the size limit and the atomic write of the files, the limits of the settings and the words of the eight languages.
+- The shared workflow checker (`tools/workflow_hygiene.py`) is the current one of the documentation hub: the filters under a trigger (branches, paths, types) are no longer read as events.
 
 ## [0.1.2] - Sheets of stencil material in the crib, a check of the crib that ends with the code 2, bounded reads of the tables and a cutting profile behind a feature
 
