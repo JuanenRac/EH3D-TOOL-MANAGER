@@ -144,3 +144,60 @@ fn a_restore_puts_back_the_backup_on_request_keeps_the_replaced_file_and_refuses
     assert!(why.starts_with("file_unreadable"), "{why}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_file_that_does_not_read_never_takes_the_place_of_a_good_backup() {
+    let dir = scratch("good_backup");
+    let file = dir.join("crib.json");
+    let mut crib = Crib::default();
+    crib.add(Tool::new("Drill 0.8", Kind::Drill, 0.8)).unwrap();
+    store::save(&crib, &file).unwrap();
+    crib.add(Tool::new("Drill 1.0", Kind::Drill, 1.0)).unwrap();
+    store::save(&crib, &file).unwrap(); // the backup holds one tool
+    let good = fs::read(dir.join("crib.json.bak")).unwrap();
+    // the file gets damaged and is written over, as an import or a pull with --force does
+    fs::write(&file, b"{ cut").unwrap();
+    assert_eq!(
+        store::keep_previous(&file).unwrap(),
+        Some(dir.join("crib.json.damaged"))
+    );
+    store::save(&crib, &file).unwrap();
+    assert_eq!(fs::read(dir.join("crib.json.bak")).unwrap(), good);
+    assert_eq!(fs::read(dir.join("crib.json.damaged")).unwrap(), b"{ cut");
+    assert_eq!(store::load(&file).unwrap(), crib);
+    assert_eq!(store::keep_previous(&dir.join("none.json")).unwrap(), None);
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_import_over_a_damaged_crib_keeps_both_the_good_backup_and_the_damaged_file() {
+    let dir = scratch("import_damaged");
+    let file = dir.join("crib.json");
+    let table = dir.join("table.csv");
+    let mut crib = Crib::default();
+    crib.add(Tool::new("Drill 0.8", Kind::Drill, 0.8)).unwrap();
+    store::save(&crib, &file).unwrap();
+    store::save(&crib, &file).unwrap();
+    let good = fs::read(dir.join("crib.json.bak")).unwrap();
+    fs::write(&file, b"{ cut").unwrap();
+    fs::write(&table, eh3d_tool_manager::csv::to_csv(&crib)).unwrap();
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_eh3d-tools"))
+        .args([
+            "import-csv",
+            file.to_str().unwrap(),
+            table.to_str().unwrap(),
+        ])
+        .env("EH3D_TOOLS_DIR", &dir)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let said = String::from_utf8_lossy(&out.stdout).into_owned();
+    assert!(said.contains("crib.json.damaged"), "{said}");
+    assert_eq!(fs::read(dir.join("crib.json.bak")).unwrap(), good);
+    assert_eq!(fs::read(dir.join("crib.json.damaged")).unwrap(), b"{ cut");
+    let _ = fs::remove_dir_all(&dir);
+}
