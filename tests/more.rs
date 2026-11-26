@@ -602,11 +602,11 @@ fn crib_file(dir: &std::path::Path, tools: &[&str]) -> String {
 #[test]
 fn the_crib_is_pushed_as_a_new_revision_of_a_project_of_the_server() {
     let (address, handle) = sequence_server(vec![
+        ("200 OK", "[]".into()),
         (
             "201 Created",
             "{\"artifact_id\":\"a-1\",\"blob_sha256\":\"ff\",\"size\":9}".into(),
         ),
-        ("200 OK", "[]".into()),
         (
             "201 Created",
             "{\"id\":\"p-1\",\"name\":\"tool-crib\",\"owner\":\"u\"}".into(),
@@ -627,22 +627,22 @@ fn the_crib_is_pushed_as_a_new_revision_of_a_project_of_the_server() {
     );
     let heads = handle.join().unwrap();
     assert!(
-        heads[0].starts_with("POST /api/v1/artifacts HTTP/1.1"),
+        heads[0].starts_with("GET /api/v1/projects HTTP/1.1"),
         "{}",
         heads[0]
     );
     assert!(
-        heads[0].contains("\"name\":\"tool-crib.json\"")
-            && heads[0].contains("\"format\":\"application/json\""),
-        "{}",
-        heads[0]
-    );
-    assert!(heads[0].contains("Bearer program-token"));
-    assert!(
-        heads[1].starts_with("GET /api/v1/projects HTTP/1.1"),
+        heads[1].starts_with("POST /api/v1/artifacts HTTP/1.1"),
         "{}",
         heads[1]
     );
+    assert!(
+        heads[1].contains("\"name\":\"tool-crib.json\"")
+            && heads[1].contains("\"format\":\"application/json\""),
+        "{}",
+        heads[1]
+    );
+    assert!(heads[1].contains("Bearer program-token"));
     assert!(heads[2].contains("\"name\":\"tool-crib\""), "{}", heads[2]);
     assert!(
         heads[3].starts_with("POST /api/v1/projects/p-1/revisions"),
