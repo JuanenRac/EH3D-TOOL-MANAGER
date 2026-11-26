@@ -711,13 +711,17 @@ impl Window {
             self.status = Status::NeedFile;
             return;
         };
-        let backup = self.backup_pending && file.exists();
-        if backup {
-            let mut bak = file.as_os_str().to_owned();
-            bak.push(".bak");
-            if let Err(e) = std::fs::copy(&file, &bak) {
-                self.fail(format!("{}.bak: {e}", file.display()));
-                return;
+        let mut backup = false;
+        if self.backup_pending {
+            match store::keep_previous(&file) {
+                // the status speaks of the `.bak`: a file that did not read went elsewhere
+                Ok(kept) => {
+                    backup = kept.is_some_and(|k| k.extension().is_some_and(|e| e == "bak"))
+                }
+                Err(e) => {
+                    self.fail(e);
+                    return;
+                }
             }
         }
         match store::save(&self.crib, &file) {

@@ -493,11 +493,8 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 crib.sheets = before.sheets;
                 crib.next_sheet_id = before.next_sheet_id;
             }
-            if target.exists() {
-                let mut bak = target.as_os_str().to_owned();
-                bak.push(".bak");
-                std::fs::copy(target, &bak).map_err(|e| format!("{}.bak: {e}", args[0]))?;
-                println!("the previous crib is kept as {}.bak", args[0]);
+            if let Some(kept) = store::keep_previous(target)? {
+                println!("the previous crib is kept as {}", kept.display());
             }
             store::save(&crib, target)?;
             println!("{} tools written to {}", crib.tools.len(), args[0]);
