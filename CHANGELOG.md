@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Third-party notices in every package (`docs/THIRD_PARTY_NOTICES`):** the packages of the releases now carry the copyright notices and licence texts of the Rust crates and of the data the program is built with, and the CI fails when a new dependency or licence is not in the file.
+
 ## [0.1.3] - Two programs on the same crib no longer lose a change
 
 - **Two programs on the same crib no longer lose a change (fix):** a command that changes a crib (`add`, `use`, `replace`, `remove`, the sheets, the imports, `restore`, `init`, `pull` and `push`) and the save of the window hold a lock from before they read the file until they have written it. Another one waits up to `lock_wait_s` of `tools.cfg` (5 seconds by default, 0 to 60) and is then refused with the code `file_locked`. The lock is held by the system, which lets it go however the program ends, so none is left behind; the empty file `FILE.json.lock` stays beside the crib. A window also refuses, with `file_changed`, to save over a crib that another program changed since it was read. Five new tests.
