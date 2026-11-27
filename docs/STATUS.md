@@ -6,7 +6,7 @@ EH3D-TOOL-MANAGER is a working program on a computer: a library (`eh3d_tool_mana
 
 ## Capabilities
 
-The official state of each capability is in `REQUIREMENTS.md`. The register has 41 requirements: 30 implemented, 5 prototype, 6 planned and 0 validated. By progress: 30 done, 5 partial, 2 pending and 4 blocked. This page never states a state that `REQUIREMENTS.md` does not.
+The official state of each capability is in `REQUIREMENTS.md`. The register has 42 requirements: 31 implemented, 5 prototype, 6 planned and 0 validated. By progress: 31 done, 5 partial, 2 pending and 4 blocked. This page never states a state that `REQUIREMENTS.md` does not.
 
 ## Open questions
 

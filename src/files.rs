@@ -1,9 +1,10 @@
-//! Reading a file with a limit of size and writing one so that it is never left half written. Every refusal starts with a code that does not change (`file_too_large`,
-//! `file_unreadable`, `file_not_text`, `file_unwritable`), followed by the name of the file.
+//! Reading a file with a limit of size, writing one so that it is never left half written and locking one while it is changed. Every refusal starts with a code that does not
+//! change (`file_too_large`, `file_unreadable`, `file_not_text`, `file_unwritable`, `file_locked`, `file_changed`), followed by the name of the file.
 
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 /// The file is larger than the limit (`max_file_mib` of `tools.cfg`).
 pub const TOO_LARGE: &str = "file_too_large";
@@ -13,6 +14,52 @@ pub const UNREADABLE: &str = "file_unreadable";
 pub const NOT_TEXT: &str = "file_not_text";
 /// The file cannot be written.
 pub const UNWRITABLE: &str = "file_unwritable";
+/// Another program is changing the file.
+pub const LOCKED: &str = "file_locked";
+/// The file is not the one that was read any more: another program changed it.
+pub const CHANGED: &str = "file_changed";
+
+/// The right to change a file, kept while the value lives. It is a lock that the system holds on the empty file `NAME.lock` beside it, and the system lets it go when the
+/// program ends, however it ends: no lock is ever left behind to be cleared by hand. The `.lock` file itself stays and is never removed, because removing it would let two
+/// programs hold two different files of the same name.
+#[derive(Debug)]
+pub struct EditLock {
+    _held: std::fs::File,
+}
+
+/// Takes the right to change `file`, waiting up to `wait` for another program (or another part of this one) to let it go. Whoever reads a file, changes it and writes it
+/// back holds the lock for the whole of it, so that no change is lost.
+pub fn lock_for_edit(file: &Path, wait: Duration) -> Result<EditLock, String> {
+    // the same file written another way (a relative path, a link) has the same lock
+    let mut name = std::fs::canonicalize(file)
+        .unwrap_or_else(|_| file.to_path_buf())
+        .into_os_string();
+    name.push(".lock");
+    let lock = PathBuf::from(name);
+    let fail = |e: std::io::Error| format!("{UNWRITABLE}: {}: {e}", lock.display());
+    let held = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock)
+        .map_err(fail)?;
+    let start = Instant::now();
+    loop {
+        match held.try_lock() {
+            Ok(()) => return Ok(EditLock { _held: held }),
+            Err(std::fs::TryLockError::WouldBlock) => {}
+            Err(std::fs::TryLockError::Error(e)) => return Err(fail(e)),
+        }
+        if start.elapsed() >= wait {
+            return Err(format!(
+                "{LOCKED}: {}: another program is changing this file; try again when it is done (lock_wait_s in tools.cfg says how long to wait)",
+                file.display()
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
 
 /// How many bytes `mib` MiB are.
 pub fn mib(mib: u64) -> u64 {

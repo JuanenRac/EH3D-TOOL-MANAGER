@@ -2,7 +2,7 @@
 
 This register is the single source of the state of each capability: `STATUS.md` and the README files cite it and never state a state that it does not. A state is one of `planned`, `prototype`, `implemented` and `validated`. `validated` means that a person has run the capability on a real machine and the evidence of the manifest says `bench` or `field`; nothing here is validated, because the wear and the feeds and speeds have not been checked on a real machine.
 
-The register has 41 requirements: 30 implemented, 5 prototype, 6 planned and 0 validated. By progress: 30 done, 5 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
+The register has 42 requirements: 31 implemented, 5 prototype, 6 planned and 0 validated. By progress: 31 done, 5 partial, 2 pending and 4 blocked. High coverage is not proof of correctness, so each row says how it is checked: the test that names it, and what it shows.
 
 ## How to read the register
 
@@ -85,3 +85,9 @@ The check is `tests/reqs.rs`: it reads this table, finds each test and fails whe
 | TMGR-039 | A fuzz with a fixed seed of the readers never panics, and what is read is written back the same. | implemented | done | host-test | `fuzz::a_seeded_fuzz_of_the_readers_never_panics_and_what_reads_writes_back_the_same` | - |
 | TMGR-040 | The cutting profile of a tool in a material is read from the machining database of EH3D-COMMON and says first that its figures were not tried on a machine. | prototype | partial | host-test | `profile::a_profile_comes_from_the_database_and_says_when_it_was_not_verified` | Built only with the feature common-machining, which the CI cannot build until it checks out a release of EH3D-COMMON that has the module; the figures were not tried on a machine. |
 | TMGR-041 | The CAM programs take the sheet and its kerf from the crib. | planned | blocked | none | `planned:cam_reads_sheets::stencilcam_takes_its_sheet_and_kerf_from_the_crib` | Needs the programs that cut a stencil to read the table of sheets. |
+
+## Several programs on one crib
+
+| ID | Requirement | State | Progress | Evidence | Test | Limits |
+|---|---|---|---|---|---|---|
+| TMGR-042 | A crib is changed by one program at a time, no change is lost and a program that dies leaves no lock behind. | implemented | done | host-test | `files::programs_that_add_to_one_crib_at_the_same_time_lose_no_tool` | The lock is the one of the system; on a shared folder it is only as good as the locks of that folder, and a program that does not ask for it is not held back. |

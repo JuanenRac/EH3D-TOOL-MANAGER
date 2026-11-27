@@ -13,6 +13,7 @@ use eh3d_tool_manager::{csv, files, server, store, sync};
 use std::env;
 use std::path::Path;
 use std::process::ExitCode;
+use std::time::Duration;
 
 const HELP: &str = "eh3d-tools: the tool crib of the EH3D Fabrication Suite
 
@@ -137,6 +138,19 @@ fn max_rows() -> Result<usize, String> {
 }
 
 /// One line of a list of sheets.
+/// The right to change the file, waited for as long as `lock_wait_s` of `tools.cfg` says. It is held from before the file is read until it is written.
+fn editing(file: &Path) -> Result<files::EditLock, String> {
+    let wait = Settings::load(&data_dir())?.lock_wait_s;
+    files::lock_for_edit(file, Duration::from_secs(u64::from(wait)))
+}
+
+/// The same for a command that changes a crib that must be there: nothing is made beside a file that does not exist.
+fn editing_existing(file: &Path) -> Result<files::EditLock, String> {
+    std::fs::metadata(file)
+        .map_err(|e| format!("{}: {}: {e}", files::UNREADABLE, file.display()))?;
+    editing(file)
+}
+
 fn sheet_line(s: &Sheet) -> String {
     format!(
         "{:>3}  {:<24} {:<12} {:>6.3} mm  reduction {} mm  kerf {} mm  aspect >= {}  area >= {}",
@@ -220,9 +234,11 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 .unwrap_or_else(|| sync::DEFAULT_NAME.to_string());
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;
-            let crib = store::load_with_limit(Path::new(&args[0]), max_mib()?)?;
-            let mut client = server::connect(link()?);
             let file = Path::new(&args[0]);
+            // held until the revision is noted: a pull in between would leave the note of one copy beside the tools of another
+            let _held = editing_existing(file)?;
+            let crib = store::load_with_limit(file, max_mib()?)?;
+            let mut client = server::connect(link()?);
             let done = sync::push(
                 &mut client,
                 &name,
@@ -267,6 +283,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 project_id: got.project_id.clone(),
                 revision: got.revision,
             };
+            let _held = editing(file)?;
             if file.exists() && !force {
                 let same = store::load_with_limit(file, max_mib()?)
                     .map(|local| store::to_json(&local) == store::to_json(&crib))
@@ -317,6 +334,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
         "init" => {
             need(&args, 1, "a file")?;
             cli_args::finish(&args, 1)?;
+            let _held = editing(Path::new(&args[0]))?;
             if Path::new(&args[0]).exists() {
                 return Err(format!(
                     "{}: already exists; nothing was overwritten",
@@ -333,6 +351,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 4, "a file, a name, a kind and a diameter")?;
             cli_args::finish(&args, 4)?;
             let file = Path::new(&args[0]);
+            let _held = editing_existing(file)?;
             let mut crib = store::load_with_limit(file, max_mib()?)?;
             let diameter = args[3]
                 .parse::<f64>()
@@ -387,6 +406,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 2, "a file and a tool number")?;
             cli_args::finish(&args, 2)?;
             let file = Path::new(&args[0]);
+            let _held = editing_existing(file)?;
             let mut crib = store::load_with_limit(file, max_mib()?)?;
             let id = tool_number(&args[1])?;
             let (hours, meters, holes) = crib.replace_tool(id)?;
@@ -400,6 +420,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 2, "a file and a tool number")?;
             cli_args::finish(&args, 2)?;
             let file = Path::new(&args[0]);
+            let _held = editing_existing(file)?;
             let mut crib = store::load_with_limit(file, max_mib()?)?;
             let removed = crib.remove(tool_number(&args[1])?)?;
             store::save(&crib, file)?;
@@ -451,6 +472,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
                 return Err(format!("--holes {holes} is not a count of holes"));
             }
             let file = Path::new(&args[0]);
+            let _held = editing_existing(file)?;
             let mut crib = store::load_with_limit(file, max_mib()?)?;
             let id = args[1]
                 .parse::<u32>()
@@ -489,6 +511,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let mut crib = csv::from_csv_limited(&text, max_rows()?)?;
             // the table that was there is kept beside the new one: an import replaces it; a table of tools has no sheets, so the sheets that were there stay
             let target = Path::new(&args[0]);
+            let _held = editing(target)?;
             if let Ok(before) = store::load_with_limit(target, max_mib()?) {
                 crib.sheets = before.sheets;
                 crib.next_sheet_id = before.next_sheet_id;
@@ -508,6 +531,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 4, "a file, a name, a material and a thickness")?;
             cli_args::finish(&args, 4)?;
             let file = Path::new(&args[0]);
+            let _held = editing_existing(file)?;
             let mut crib = store::load_with_limit(file, max_mib()?)?;
             let thickness = args[3]
                 .parse::<f64>()
@@ -538,6 +562,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 2, "a file and a sheet number")?;
             cli_args::finish(&args, 2)?;
             let file = Path::new(&args[0]);
+            let _held = editing_existing(file)?;
             let mut crib = store::load_with_limit(file, max_mib()?)?;
             let id = tool_number(&args[1])?;
             let removed = crib.remove_sheet(id)?;
@@ -563,6 +588,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             let text = files::read_text_limited(Path::new(&args[1]), files::mib(max_mib()?))?;
             let sheets = csv::from_sheets_csv_limited(&text, max_rows()?)?;
             let target = Path::new(&args[0]);
+            let _held = editing_existing(target)?;
             let mut crib = store::load_with_limit(target, max_mib()?)?;
             crib.next_sheet_id = crib.next_sheet_id.max(sheets.next_sheet_id);
             crib.sheets = sheets.sheets;
@@ -607,6 +633,7 @@ fn run(mut args: Vec<String>) -> Result<(), String> {
             need(&args, 1, "a crib file")?;
             cli_args::finish(&args, 1)?;
             let target = Path::new(&args[0]);
+            let _held = editing(target)?;
             let tools = store::restore_from_backup(target, max_mib()?)?;
             println!(
                 "WARNING: {} was replaced by its backup {}.bak ({tools} tools); whatever was saved after that backup is not in it. The file that was there is kept as {}.damaged",

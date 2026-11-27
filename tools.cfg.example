@@ -19,6 +19,9 @@ default_max_rpm = 24000
 # The largest crib or CSV file that is read, in MiB (1 to 1024); a bigger file is refused with the code file_too_large.
 max_file_mib = 16
 
+# How long a command or the window waits for another program that is changing the same crib, in seconds (0 to 60), before the change is refused with the code file_locked.
+lock_wait_s = 5
+
 # The most rows read from a CSV table of tools, sheets or needs (1 to 100000); a table with more is refused.
 max_csv_rows = 10000
 

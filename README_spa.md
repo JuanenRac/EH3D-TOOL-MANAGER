@@ -18,7 +18,7 @@
 
 ---
 
-**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-tools`) con 279 pruebas que se ejecutan en un ordenador: guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material. Una ventana (`eh3d-tools-gui`, compilada con la característica `gui`) está escrita y su lógica está probada, pero no se ha compilado ni mirado en una pantalla; nada se ha probado en una máquina y nada se ha comprobado con una colección de ficheros reales.
+**Comprobación de honestidad - lo que funciona hoy:** una biblioteca Rust y un programa de línea de comandos (`eh3d-tools`) con 284 pruebas que se ejecutan en un ordenador: guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material. Una ventana (`eh3d-tools-gui`, compilada con la característica `gui`) está escrita y su lógica está probada, pero no se ha compilado ni mirado en una pantalla; nada se ha probado en una máquina y nada se ha comprobado con una colección de ficheros reales.
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|
 | Versión | `0.1.2` |
 | Madurez | Andamiaje |
-| Pruebas | 279 |
+| Pruebas | 284 |
 | Pila tecnológica | Rust |
 | En hardware real | No probado: nada de esto se ha ejecutado en una máquina |
 
@@ -47,7 +47,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 |---|---|---|
 | Núcleo | 🟡 | guarda las herramientas con su geometría y desgaste, las almacena en JSON o CSV y calcula avances y velocidades de partida por material; probado en un ordenador con entradas normales y dañadas, no con una colección de ficheros reales. |
 | Línea de comandos | 🟡 | `eh3d-tools` ejecuta las mismas funciones que la biblioteca e imprime el resultado; cada error vuelve como mensaje y un código de salida distinto de cero. |
-| Pruebas | 🟡 | 279 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas, y un turno simulado de trabajos (informes que no son números, herramientas que ya no están, guardados que fallan, un archivo del almacén cortado a medias) con su recuperación. |
+| Pruebas | 🟡 | 284 pruebas pasan (`cargo test`), con casos normales, casos límite y entradas dañadas, y un turno simulado de trabajos (informes que no son números, herramientas que ya no están, guardados que fallan, un archivo del almacén cortado a medias) con su recuperación. |
 | Seguridad | 🟡 | Rust seguro y simple (`forbid(unsafe_code)`): nada entra en pánico con los ficheros recibidos y un valor malo es un error con su motivo; sin revisión independiente. |
 | Ventana | 🟠 | Escrita (egui, `--features gui`, programa `eh3d-tools-gui`): una tabla de herramientas que se añaden, cambian y quitan con las comprobaciones de la línea de comandos, filtros y búsqueda, importación y exportación de CSV con los errores de la biblioteca y una calculadora de avances y velocidades que muestra sus fórmulas y condiciones; su lógica está probada, pero aún no se ha compilado ni mirado en una pantalla. |
 | Hardware real | 🔴 | No probado: nada de esto se ha ejecutado en una máquina. |
@@ -93,6 +93,7 @@ Cómo encajan las partes de este repositorio: quién lo usa, qué contiene y de 
 * **Pruebas con entradas dañadas:** las pruebas también dan ficheros vacíos, basura, números enormes y ficheros cortados, y ninguna puede provocar un pánico.
 * **Sin adivinar:** un valor que no tiene sentido es un error que dice cuál y por qué, nunca un resultado que solo lo parece.
 * **Límite de tamaño y escritura atómica de los ficheros:** el fichero de herramientas y la tabla CSV se leen solo si no pesan más que `max_file_mib` de `tools.cfg` (16 MiB por defecto, de 1 a 1024), en la línea de comandos y en la ventana; un fichero mayor se rechaza con el código `file_too_large` y su nombre, uno que no se puede leer con `file_unreadable` y uno que no es texto con `file_not_text`, y no se carga nada. El fichero de herramientas y la tabla CSV se escriben en un fichero temporal junto al real y se renombran encima, de modo que un corte o un disco lleno dejan entero el fichero anterior (`file_unwritable` y se borra el temporal si falla); la exportación a CSV sigue sin sustituir nunca un fichero salvo que la persona lo diga.
+* **Un cambio cada vez:** una orden que cambia un inventario y el guardado de la ventana mantienen un candado desde antes de leer el archivo hasta haberlo escrito, de modo que dos programas sobre el mismo inventario no pierden ningún cambio; otro espera hasta `lock_wait_s` de `tools.cfg` (5 segundos por defecto, de 0 a 60) y entonces se rechaza con el código `file_locked`. El sistema suelta el candado acabe como acabe el programa, así que no queda ninguno huérfano (el archivo vacío `FILE.json.lock` permanece junto al inventario). La ventana se niega, con `file_changed`, a guardar sobre un inventario que otro programa cambió después de leerlo.
 * **Sin código unsafe:** `#![forbid(unsafe_code)]` en la biblioteca y el programa.
 * **Un almacén que aguanta:** el número de una herramienta retirada no se vuelve a dar (el almacén guarda `next_id`), un id que no es un número entero se dice así, el CSV rechaza texto tras unas comillas de cierre, un texto que empieza como una fórmula (`=`, `+`, `-`, `@`) se escribe como texto para que la hoja de cálculo no lo ejecute, el material tiene un límite, `--holes` es un número entero, una opción desconocida es un error y `calc` dice que el resultado de una fresa en V o de un grabador es solo un punto de partida.
 * **El ancho del corte de una fresa en V:** `eh3d-tools vbit --depth MM [--angle GRADOS] [--flat MM]` calcula `2 x profundidad x tan(ángulo / 2) + punta plana` (una fresa de 60 grados a 0,5 mm da 0,5774 mm más la punta plana de 0,1 mm = 0,6774 mm); el ángulo va de 10 a 170 grados, la profundidad de 0 a 100 mm y la punta plana de 0 a 5 mm, y lo que no se da es el valor de `tools.cfg`. `calc --depth MM` usa ese ancho como el diámetro con el que trabaja una fresa en V o un grabador en los avances y velocidades, y la calculadora de la ventana tiene un campo para la profundidad, muestra el ancho del corte y la fórmula con sus números; sin profundidad los números son los de siempre.
@@ -190,7 +191,7 @@ Para sacar una captura de la ventana sin abrirla a mano, ejecútelo con `--shot 
 
 ## 🧪 Pruebas
 
-El conjunto tiene 279 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` (también con `--features gui`) con las advertencias como errores y `python -I tools/ci_validate.py`.
+El conjunto tiene 284 pruebas (`cargo test`, ejecutadas en Windows y Linux en el CI). Comprueban los casos normales, los casos límite y las entradas dañadas: ficheros vacíos, basura y ficheros cortados nunca provocan un pánico. El CI ejecuta además `cargo fmt --check`, `cargo clippy` (también con `--features gui`) con las advertencias como errores y `python -I tools/ci_validate.py`.
 
 ## 🏗️ Compilación y publicación
 
