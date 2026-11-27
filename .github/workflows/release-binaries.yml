@@ -125,7 +125,7 @@ jobs:
           name="eh3d-tool-manager-${version}-${MATRIX_LABEL}"
           mkdir "$name"
           cp "target/${MATRIX_TARGET}/release/eh3d-tools${MATRIX_EXT}" "target/${MATRIX_TARGET}/release/eh3d-tools-gui${MATRIX_EXT}" "$name/"
-          cp LICENSE README.md CHANGELOG.md "$name/"
+          cp LICENSE README.md CHANGELOG.md docs/THIRD_PARTY_NOTICES "$name/"
           # the icon of the program and the settings file with every key and its default
           cp images/brand/icon.ico images/brand/png/icon-256.png tools.cfg.example "$name/"
           mkdir -p dist
