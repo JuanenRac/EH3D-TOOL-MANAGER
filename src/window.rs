@@ -8,7 +8,8 @@ use crate::lang::{fill, Lang, Msg};
 use crate::model::{Crib, Kind, Tool, Wear};
 use crate::settings::Settings;
 use crate::{csv, store};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// The name of the crib file the window opens when `tools.cfg` names no other one, in the folder of the program.
 pub const DEFAULT_CRIB_FILE: &str = "crib.json";
@@ -561,6 +562,8 @@ pub struct Window {
     pub dirty: bool,
     /// True when the next save replaces a file whose tools were swapped for others (a new crib or an import): the file that is there is kept as `.bak`.
     backup_pending: bool,
+    /// The crib file the window last read or wrote and the text it had then: a save over it is refused when another program changed it since.
+    seen: Option<(PathBuf, String)>,
     pub search: String,
     pub kind_filter: Option<Kind>,
     pub wear_filter: WearFilter,
@@ -595,6 +598,7 @@ impl Window {
             overwrite_csv: false,
             dirty: false,
             backup_pending: false,
+            seen: None,
             search: String::new(),
             kind_filter: None,
             wear_filter: WearFilter::All,
@@ -635,6 +639,7 @@ impl Window {
             overwrite_csv: false,
             dirty: false,
             backup_pending: false,
+            seen: None,
             search: String::new(),
             kind_filter: None,
             wear_filter: WearFilter::All,
@@ -684,14 +689,37 @@ impl Window {
         self.selected = None;
     }
 
+    /// The crib of a file within the limit of the settings, with the text it was read from.
+    fn read_crib(&self, file: &Path) -> Result<(Crib, String), String> {
+        let text = files::read_text_limited(file, files::mib(self.settings.max_file_mib))?;
+        Ok((store::from_json(&text)?, text))
+    }
+
+    /// The right to change the crib file, as the command line takes it.
+    fn editing(&self, file: &Path) -> Result<files::EditLock, String> {
+        let wait = Duration::from_secs(u64::from(self.settings.lock_wait_s));
+        files::lock_for_edit(file, wait)
+    }
+
+    /// Whether the file the window read or wrote holds another crib now. A file that is gone or does not read is not one: the save writes it again, and keeps what did not
+    /// read as `.damaged`.
+    fn changed_by_another(&self, file: &Path) -> bool {
+        self.seen.as_ref().is_some_and(|(path, text)| {
+            path == file
+                && files::read_text_limited(file, files::mib(1024))
+                    .is_ok_and(|now| now != *text && store::from_json(&now).is_ok())
+        })
+    }
+
     /// Reads the crib file.
     pub fn open(&mut self) {
         let Some(file) = self.file_path() else {
             self.status = Status::NeedFile;
             return;
         };
-        match store::load_with_limit(&file, self.settings.max_file_mib) {
-            Ok(crib) => {
+        match self.read_crib(&file) {
+            Ok((crib, text)) => {
+                self.seen = Some((file.clone(), text));
                 self.crib = crib;
                 self.forget_choice();
                 self.dirty = false;
@@ -711,6 +739,21 @@ impl Window {
             self.status = Status::NeedFile;
             return;
         };
+        let _held = match self.editing(&file) {
+            Ok(held) => held,
+            Err(e) => {
+                self.fail(e);
+                return;
+            }
+        };
+        if self.changed_by_another(&file) {
+            self.fail(format!(
+                "{}: {}: another program changed this file since the window read it, and a save would undo that; open it again and make the changes again, or save to another file",
+                files::CHANGED,
+                file.display()
+            ));
+            return;
+        }
         let mut backup = false;
         if self.backup_pending {
             match store::keep_previous(&file) {
@@ -726,6 +769,7 @@ impl Window {
         }
         match store::save(&self.crib, &file) {
             Ok(()) => {
+                self.seen = Some((file.clone(), store::to_json(&self.crib)));
                 self.dirty = false;
                 self.backup_pending = false;
                 self.status = Status::Saved {
@@ -745,9 +789,17 @@ impl Window {
             self.status = Status::NeedFile;
             return;
         };
+        let _held = match self.editing(&file) {
+            Ok(held) => held,
+            Err(e) => {
+                self.fail(e);
+                return;
+            }
+        };
         match store::restore_from_backup(&file, self.settings.max_file_mib) {
-            Ok(tools) => match store::load_with_limit(&file, self.settings.max_file_mib) {
-                Ok(crib) => {
+            Ok(tools) => match self.read_crib(&file) {
+                Ok((crib, text)) => {
+                    self.seen = Some((file.clone(), text));
                     self.crib = crib;
                     self.forget_choice();
                     self.dirty = false;
@@ -765,6 +817,8 @@ impl Window {
 
     /// An empty crib; the file that is named is not touched until the person saves (and then it is kept as `.bak`).
     pub fn new_crib(&mut self) {
+        // an empty crib replaces whatever the file holds, on purpose
+        self.seen = None;
         self.crib = Crib::default();
         self.forget_choice();
         self.dirty = false;
@@ -1340,6 +1394,43 @@ mod tests {
         none.file_text = String::new();
         none.restore_backup();
         assert_eq!(none.status, Status::NeedFile);
+    }
+
+    #[test]
+    fn a_save_never_undoes_what_another_program_changed_since_the_crib_was_read() {
+        let mut w = window("changed");
+        add(&mut w, "A", Kind::Drill, "0.8");
+        w.save();
+        let file = std::path::PathBuf::from(&w.file_text);
+        let mut other = store::load(&file).unwrap();
+        other.add(Tool::new("Theirs", Kind::Drill, 1.0)).unwrap();
+        store::save(&other, &file).unwrap();
+        let theirs = std::fs::read_to_string(&file).unwrap();
+        add(&mut w, "Mine", Kind::Drill, "0.9");
+        w.save();
+        assert!(
+            matches!(&w.status, Status::Failed(e) if e.starts_with("file_changed: ")),
+            "{:?}",
+            w.status
+        );
+        assert!(w.dirty);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), theirs);
+        // opened again, the window starts from what is there and saves
+        w.open();
+        add(&mut w, "Mine", Kind::Drill, "0.9");
+        w.save();
+        assert!(matches!(&w.status, Status::Saved { tools: 3, .. }));
+        // and another program that holds the lock is waited for, then refused
+        w.settings.lock_wait_s = 0;
+        let held = crate::files::lock_for_edit(&file, std::time::Duration::ZERO).unwrap();
+        add(&mut w, "Late", Kind::Drill, "1.1");
+        w.save();
+        assert!(matches!(&w.status, Status::Failed(e) if e.starts_with("file_locked: ")));
+        w.restore_backup();
+        assert!(matches!(&w.status, Status::Failed(e) if e.starts_with("file_locked: ")));
+        drop(held);
+        w.save();
+        assert!(matches!(&w.status, Status::Saved { tools: 4, .. }));
     }
 
     #[test]

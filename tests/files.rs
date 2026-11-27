@@ -1,11 +1,15 @@
 //! The size limit of the crib and CSV files that are read and the atomic write of the files that are written.
 
 use eh3d_tool_manager::files::{
-    mib, read_text_limited, write_atomic, NOT_TEXT, TOO_LARGE, UNREADABLE, UNWRITABLE,
+    lock_for_edit, mib, read_text_limited, write_atomic, LOCKED, NOT_TEXT, TOO_LARGE, UNREADABLE,
+    UNWRITABLE,
 };
 use eh3d_tool_manager::model::{Crib, Kind, Tool};
 use eh3d_tool_manager::store;
 use std::fs;
+use std::path::Path;
+use std::process::{Command, Output, Stdio};
+use std::time::Duration;
 
 fn scratch(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("eh3d_tools_files_{}_{name}", std::process::id()));
@@ -199,5 +203,106 @@ fn an_import_over_a_damaged_crib_keeps_both_the_good_backup_and_the_damaged_file
     assert!(said.contains("crib.json.damaged"), "{said}");
     assert_eq!(fs::read(dir.join("crib.json.bak")).unwrap(), good);
     assert_eq!(fs::read(dir.join("crib.json.damaged")).unwrap(), b"{ cut");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// `eh3d-tools` with its settings in `dir`.
+fn cli(dir: &Path, args: &[&str]) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_eh3d-tools"));
+    command.args(args).env("EH3D_TOOLS_DIR", dir);
+    command
+}
+
+fn run(dir: &Path, args: &[&str]) -> Output {
+    cli(dir, args).output().expect("the program runs")
+}
+
+#[test]
+fn a_file_being_changed_is_locked_for_the_others_and_freed_when_its_holder_goes() {
+    let dir = scratch("lock");
+    let file = dir.join("crib.json");
+    let held = lock_for_edit(&file, Duration::ZERO).unwrap();
+    let why = lock_for_edit(&file, Duration::from_millis(60)).unwrap_err();
+    assert!(
+        why.starts_with(LOCKED) && why.contains("crib.json") && why.contains("lock_wait_s"),
+        "{why}"
+    );
+    // another file has a lock of its own
+    drop(lock_for_edit(&dir.join("other.json"), Duration::ZERO).unwrap());
+    drop(held);
+    // the file of the lock stays where it was and holds nobody back
+    assert!(dir.join("crib.json.lock").is_file());
+    drop(lock_for_edit(&file, Duration::ZERO).unwrap());
+    let why = lock_for_edit(&dir.join("none").join("a.json"), Duration::ZERO).unwrap_err();
+    assert!(why.starts_with(UNWRITABLE), "{why}");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn every_command_that_changes_a_crib_waits_for_its_lock_and_the_ones_that_read_do_not() {
+    let dir = scratch("lock_cli");
+    fs::write(dir.join("tools.cfg"), "lock_wait_s = 0\n").unwrap();
+    let file = dir.join("crib.json");
+    let f = file.to_str().unwrap();
+    assert!(run(&dir, &["init", f]).status.success());
+    assert!(run(&dir, &["add", f, "A", "drill", "0.8"]).status.success());
+    assert!(run(&dir, &["add-sheet", f, "S", "steel", "0.1"])
+        .status
+        .success());
+    let table = dir.join("in.csv");
+    fs::write(&table, run(&dir, &["export-csv", f]).stdout).unwrap();
+    let sheets = dir.join("sheets.csv");
+    fs::write(&sheets, run(&dir, &["export-sheets-csv", f]).stdout).unwrap();
+    let (t, s) = (table.to_str().unwrap(), sheets.to_str().unwrap());
+    let before = fs::read_to_string(&file).unwrap();
+    let held = lock_for_edit(&file, Duration::ZERO).unwrap();
+    for args in [
+        vec!["add", f, "B", "drill", "0.9"],
+        vec!["use", f, "1", "--holes", "5"],
+        vec!["replace", f, "1"],
+        vec!["remove", f, "1"],
+        vec!["add-sheet", f, "T", "steel", "0.2"],
+        vec!["remove-sheet", f, "1"],
+        vec!["import-csv", f, t],
+        vec!["import-sheets-csv", f, s],
+        vec!["restore", f],
+        vec!["init", f],
+    ] {
+        let out = run(&dir, &args);
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(out.status.code(), Some(1), "{args:?}: {err}");
+        assert!(err.contains(LOCKED), "{args:?}: {err}");
+    }
+    assert_eq!(fs::read_to_string(&file).unwrap(), before);
+    assert!(run(&dir, &["list", f]).status.success());
+    drop(held);
+    assert!(run(&dir, &["use", f, "1", "--holes", "5"]).status.success());
+    // a crib that is not there gets no file beside it
+    let none = dir.join("none.json");
+    let out = run(&dir, &["add", none.to_str().unwrap(), "A", "drill", "0.8"]);
+    assert!(String::from_utf8_lossy(&out.stderr).contains(UNREADABLE));
+    assert!(!dir.join("none.json.lock").exists());
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn programs_that_add_to_one_crib_at_the_same_time_lose_no_tool() {
+    let dir = scratch("lock_many");
+    fs::write(dir.join("tools.cfg"), "lock_wait_s = 60\n").unwrap();
+    let file = dir.join("crib.json");
+    let f = file.to_str().unwrap();
+    assert!(run(&dir, &["init", f]).status.success());
+    let running: Vec<_> = (0..12)
+        .map(|i| {
+            cli(&dir, &["add", f, &format!("tool {i}"), "drill", "0.8"])
+                .stdout(Stdio::null())
+                .spawn()
+                .expect("the program starts")
+        })
+        .collect();
+    for mut child in running {
+        assert!(child.wait().unwrap().success());
+    }
+    assert_eq!(store::load(&file).unwrap().tools.len(), 12);
     let _ = fs::remove_dir_all(&dir);
 }

@@ -26,6 +26,9 @@ pub const MIN_WINDOW: (u32, u32) = (720, 480);
 pub const MAX_WINDOW: (u32, u32) = (7680, 4320);
 pub const MAX_RPM_LIMITS: (f64, f64) = (1000.0, 400_000.0);
 pub const MAX_FILE_MIB_LIMITS: (u32, u32) = (1, 1024);
+/// How long a change waits for another program that is changing the same crib, in seconds: the default and the limits of `lock_wait_s`.
+pub const DEFAULT_LOCK_WAIT_S: u32 = 5;
+pub const LOCK_WAIT_S_LIMITS: (u32, u32) = (0, 60);
 /// The most rows read from a CSV table: the default and the limits of `max_csv_rows`.
 pub const DEFAULT_MAX_CSV_ROWS: u32 = 10_000;
 pub const MAX_CSV_ROWS_LIMITS: (u32, u32) = (1, 100_000);
@@ -45,6 +48,8 @@ pub struct Settings {
     pub default_max_rpm: f64,
     /// The largest crib or CSV file that is read, in MiB; a bigger one is refused with the code `file_too_large`.
     pub max_file_mib: u64,
+    /// How long a change waits for another program that is changing the same crib, in seconds, before it is refused with the code `file_locked`.
+    pub lock_wait_s: u32,
     /// The most rows read from a CSV table; a table with more is refused.
     pub max_csv_rows: usize,
     /// How far a size asked of a tool or a sheet may be from the one in the crib in `check`, in mm.
@@ -64,6 +69,7 @@ impl Default for Settings {
             crib_file: None,
             default_max_rpm: DEFAULT_MAX_RPM,
             max_file_mib: DEFAULT_MAX_FILE_MIB,
+            lock_wait_s: DEFAULT_LOCK_WAIT_S,
             max_csv_rows: DEFAULT_MAX_CSV_ROWS as usize,
             check_tolerance_mm: DEFAULT_CHECK_TOLERANCE_MM,
             server: eh3d_serverclient::Settings::default(),
@@ -168,6 +174,9 @@ impl Settings {
                 }
                 "max_file_mib" => {
                     s.max_file_mib = u64::from(whole(line, key, value, MAX_FILE_MIB_LIMITS)?);
+                }
+                "lock_wait_s" => {
+                    s.lock_wait_s = whole(line, key, value, LOCK_WAIT_S_LIMITS)?;
                 }
                 "max_csv_rows" => {
                     s.max_csv_rows = whole(line, key, value, MAX_CSV_ROWS_LIMITS)? as usize;
@@ -360,8 +369,22 @@ max_file_mib = 1024"
         let sample = include_str!("../tools.cfg.example");
         assert_eq!(Settings::parse(sample).unwrap(), Settings::default());
         assert!(sample.contains("max_file_mib = 16"));
+        assert!(sample.contains("lock_wait_s = 5"));
         assert!(sample.contains("max_csv_rows = 10000"));
         assert!(sample.contains("check_tolerance_mm = 0.01"));
+    }
+
+    #[test]
+    fn the_wait_for_the_lock_is_read_and_has_its_limits() {
+        assert_eq!(Settings::default().lock_wait_s, 5);
+        for good in [0, 60] {
+            let s = Settings::parse(&format!("lock_wait_s = {good}")).unwrap();
+            assert_eq!(s.lock_wait_s, good);
+        }
+        for bad in ["lock_wait_s = 61", "lock_wait_s = -1", "lock_wait_s = long"] {
+            let e = Settings::parse(bad).unwrap_err();
+            assert!(e.contains("lock_wait_s") && e.contains("0 to 60"), "{e}");
+        }
     }
 
     #[test]

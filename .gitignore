@@ -2,6 +2,7 @@
 Cargo.lock.bak
 *.eh3dproj.tmp
 *.json.sync
+*.json.lock
 .env
 .env.*
 !.env.example
